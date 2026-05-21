@@ -311,6 +311,7 @@
     <li><a href="#s15">💬 Teams Bot vs 独自UI 音声対話比較</a></li>
     <li><a href="#s16">🏢 会社AWS環境へのデプロイ時の注意点</a></li>
     <li><a href="#s17">🚀 本番GPU環境での動作準備（Qwen版）</a></li>
+    <li><a href="#s18">🧠 アーキテクチャ図・Qwen / Ollama 解説</a></li>
   </ol>
 </div>
 
@@ -1767,6 +1768,250 @@ npm run build && npm start</code></pre>
           <td>ボットの最初の発話が遅い</td>
           <td>Whisperモデルの初回ロード</td>
           <td>2回目以降は速くなる。初回のみ30秒程度かかることがある</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+</div>
+
+  <!-- ===== 18. アーキテクチャ図・Qwen / Ollama 解説 ===== -->
+  <section id="s18">
+    <h2>🧠 18. アーキテクチャ図・Qwen / Ollama 解説</h2>
+
+    <h3>🗺️ システム全体アーキテクチャ図</h3>
+
+    <style>
+      .arch-wrap { overflow-x: auto; margin: 16px 0; }
+      .arch { display: flex; flex-direction: column; gap: 0; min-width: 640px; font-size: 0.82rem; }
+      .arch-layer {
+        display: flex; align-items: stretch; border-radius: 12px;
+        border: 2px solid; overflow: hidden; margin-bottom: 0;
+      }
+      .arch-label {
+        writing-mode: vertical-rl; text-orientation: mixed;
+        padding: 12px 8px; font-size: 0.72rem; font-weight: 700;
+        display: flex; align-items: center; justify-content: center;
+        min-width: 32px; letter-spacing: 0.1em;
+      }
+      .arch-inner { flex: 1; padding: 14px 18px; }
+      .arch-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin: 4px 0; }
+      .arch-box {
+        border-radius: 8px; padding: 8px 14px; font-size: 0.8rem; font-weight: 600;
+        display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 120px;
+      }
+      .arch-box .sub { font-size: 0.7rem; font-weight: 400; opacity: 0.75; }
+      .arch-arrow { font-size: 1.1rem; color: #5bb8e8; font-weight: bold; align-self: center; flex: 0; }
+      .arch-arrow-v {
+        text-align: center; font-size: 1.1rem; color: #5bb8e8;
+        padding: 4px 0; font-weight: bold; letter-spacing: 2px;
+      }
+      /* レイヤー色 */
+      .layer-browser { border-color: #60a5fa; background: #eff6ff; }
+      .layer-browser .arch-label { background: #3b82f6; color: white; }
+      .layer-backend { border-color: #34d399; background: #ecfdf5; }
+      .layer-backend .arch-label { background: #10b981; color: white; }
+      .layer-ollama { border-color: #a78bfa; background: #f5f3ff; }
+      .layer-ollama .arch-label { background: #7c3aed; color: white; }
+      /* ボックス色 */
+      .box-blue   { background: #dbeafe; color: #1e40af; border: 1px solid #93c5fd; }
+      .box-green  { background: #d1fae5; color: #065f46; border: 1px solid #6ee7b7; }
+      .box-purple { background: #ede9fe; color: #4c1d95; border: 1px solid #c4b5fd; }
+      .box-orange { background: #fef3c7; color: #78350f; border: 1px solid #fcd34d; }
+      .box-gray   { background: #f1f5f9; color: #334155; border: 1px solid #cbd5e1; }
+
+      .component-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 16px 0; }
+      @media (max-width: 600px) { .component-grid { grid-template-columns: 1fr; } }
+      .component-card {
+        border-radius: 12px; padding: 18px 20px;
+        border: 2px solid; font-size: 0.85rem; line-height: 1.7;
+      }
+      .component-card h4 { margin: 0 0 8px; font-size: 0.95rem; }
+      .component-card .tag {
+        display: inline-block; padding: 1px 8px; border-radius: 20px;
+        font-size: 0.7rem; font-weight: 700; margin-bottom: 8px;
+      }
+      .card-qwen    { border-color: #a78bfa; background: #f5f3ff; }
+      .card-qwen h4 { color: #4c1d95; }
+      .card-qwen .tag { background: #7c3aed; color: white; }
+      .card-ollama  { border-color: #60a5fa; background: #eff6ff; }
+      .card-ollama h4 { color: #1e40af; }
+      .card-ollama .tag { background: #2563eb; color: white; }
+      .card-whisper { border-color: #34d399; background: #ecfdf5; }
+      .card-whisper h4 { color: #065f46; }
+      .card-whisper .tag { background: #059669; color: white; }
+      .card-tts     { border-color: #fb923c; background: #fff7ed; }
+      .card-tts h4  { color: #7c2d12; }
+      .card-tts .tag { background: #ea580c; color: white; }
+
+      .flow-row { display: flex; align-items: center; gap: 6px; margin: 10px 0; flex-wrap: wrap; }
+      .flow-step {
+        padding: 6px 14px; border-radius: 20px; font-size: 0.78rem; font-weight: 700;
+        white-space: nowrap;
+      }
+      .flow-arrow { color: #5bb8e8; font-size: 1rem; font-weight: bold; }
+    </style>
+
+    <div class="arch-wrap">
+      <div class="arch">
+
+        <!-- Browser Layer -->
+        <div class="arch-layer layer-browser">
+          <div class="arch-label">ブラウザ</div>
+          <div class="arch-inner">
+            <div class="arch-row">
+              <div class="arch-box box-blue">🎤 マイク録音<div class="sub">PCM16 / 24kHz</div></div>
+              <div class="arch-arrow">→</div>
+              <div class="arch-box box-blue">📦 音声データ送信<div class="sub">Base64エンコード</div></div>
+              <div class="arch-arrow">→ WebSocket →</div>
+              <div class="arch-box box-blue">💬 テキスト表示<div class="sub">文字起こし・応答</div></div>
+              <div class="arch-arrow">→</div>
+              <div class="arch-box box-orange">🔊 Web Speech API<div class="sub">ブラウザ内蔵TTS</div></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="arch-arrow-v">↕ WebSocket（ws://localhost:8001）</div>
+
+        <!-- Backend Layer -->
+        <div class="arch-layer layer-backend">
+          <div class="arch-label">FastAPI バックエンド</div>
+          <div class="arch-inner">
+            <div class="arch-row">
+              <div class="arch-box box-green">① 音声受信<div class="sub">PCM16 → WAV変換</div></div>
+              <div class="arch-arrow">→</div>
+              <div class="arch-box box-green">② STT<div class="sub">faster-whisper</div></div>
+              <div class="arch-arrow">→</div>
+              <div class="arch-box box-green">③ テキスト確定<div class="sub">日本語テキスト</div></div>
+              <div class="arch-arrow">→</div>
+              <div class="arch-box box-green">④ LLM呼び出し<div class="sub">Ollama API</div></div>
+              <div class="arch-arrow">→</div>
+              <div class="arch-box box-green">⑤ 応答返却<div class="sub">WebSocketで送信</div></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="arch-arrow-v">↕ HTTP（http://localhost:11434/v1）OpenAI互換API</div>
+
+        <!-- Ollama Layer -->
+        <div class="arch-layer layer-ollama">
+          <div class="arch-label">Ollamaサーバー</div>
+          <div class="arch-inner">
+            <div class="arch-row">
+              <div class="arch-box box-purple">🧠 Qwen2.5:3b<div class="sub">ローカル開発用（~2GB）</div></div>
+              <div class="arch-arrow" style="color:#a78bfa">→ 切替 →</div>
+              <div class="arch-box box-purple">🧠 Qwen2.5:32b<div class="sub">本番GPU用（~20GB）</div></div>
+              <div class="arch-arrow"></div>
+              <div class="arch-box box-gray">📡 OpenAI互換API<div class="sub">/v1/chat/completions</div></div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <h3>🔄 1回の会話ターンの処理フロー</h3>
+    <div class="flow-row">
+      <div class="flow-step box-blue" style="border-radius:20px">① スペースキー押す</div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-step box-blue" style="border-radius:20px">② マイク録音（PCM16）</div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-step box-blue" style="border-radius:20px">③ スペースで停止・送信</div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-step box-green" style="border-radius:20px">④ faster-whisper でSTT</div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-step box-green" style="border-radius:20px">⑤ 文字起こし表示</div>
+    </div>
+    <div class="flow-row" style="margin-top:4px">
+      <div class="flow-step box-green" style="border-radius:20px">⑥ Ollamaに会話履歴ごと送信</div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-step box-purple" style="border-radius:20px">⑦ Qwenが応答生成</div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-step box-green" style="border-radius:20px">⑧ テキストをブラウザへ返却</div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-step box-orange" style="border-radius:20px">⑨ Web Speech APIで読み上げ</div>
+    </div>
+
+    <h3>📦 主要コンポーネント詳細</h3>
+    <div class="component-grid">
+
+      <div class="component-card card-qwen">
+        <div class="tag">🧠 LLM モデル</div>
+        <h4>Qwen2.5（通義千問）</h4>
+        <strong>作成：</strong>Alibaba Cloud（アリババ）<br>
+        <strong>ライセンス：</strong>Apache 2.0（商用利用可）<br>
+        <strong>特徴：</strong>日本語を含む多言語対応・複数サイズ展開<br>
+        <strong>サイズ展開：</strong>0.5b / 1.5b / 3b / 7b / 14b / 32b / 72b<br>
+        <strong>本アプリでの役割：</strong>インタビュアー・講師として会話・質問生成
+      </div>
+
+      <div class="component-card card-ollama">
+        <div class="tag">🖥️ LLM ランタイム</div>
+        <h4>Ollama</h4>
+        <strong>作成：</strong>Ollama Inc.（OSSプロジェクト）<br>
+        <strong>ライセンス：</strong>MIT<br>
+        <strong>特徴：</strong>ローカルでLLMを動かすための実行エンジン<br>
+        <strong>API：</strong>OpenAI互換（<code>/v1/chat/completions</code>）<br>
+        <strong>本アプリでの役割：</strong>Qwenモデルを読み込み・APIとして提供。<code>openai</code> Python SDKからそのまま呼べる
+      </div>
+
+      <div class="component-card card-whisper">
+        <div class="tag">🎙️ STT（音声認識）</div>
+        <h4>faster-whisper</h4>
+        <strong>作成：</strong>SYSTRAN（OSSプロジェクト）<br>
+        <strong>ライセンス：</strong>MIT<br>
+        <strong>特徴：</strong>OpenAIのWhisperをCTranslate2で高速化。CPU/GPU両対応<br>
+        <strong>モデルサイズ：</strong>tiny / base / small / medium / large-v3<br>
+        <strong>本アプリでの役割：</strong>ユーザーの音声（PCM16 WAV）を日本語テキストに変換
+      </div>
+
+      <div class="component-card card-tts">
+        <div class="tag">🔊 TTS（音声合成）</div>
+        <h4>Web Speech API</h4>
+        <strong>作成：</strong>W3C標準 / ブラウザ内蔵<br>
+        <strong>ライセンス：</strong>不要（ブラウザ標準機能）<br>
+        <strong>特徴：</strong>インストール不要・日本語音声対応・Chrome/Edge等で利用可<br>
+        <strong>本アプリでの役割：</strong>ボットの返答テキストを音声で読み上げ。サーバー負荷ゼロ
+      </div>
+
+    </div>
+
+    <h3>🔗 QwenとOllamaの関係</h3>
+    <div class="plain-box">
+      <strong>Qwen ＝「頭脳」（モデルファイル）</strong><br>
+      数十億のパラメータからなる重みファイル。それ単体では動かせない。<br><br>
+      <strong>Ollama ＝「体・動かす仕組み」（ランタイム）</strong><br>
+      Qwenのモデルを読み込み、GPUやCPUで推論を実行し、APIとして提供する。<br><br>
+      <strong>例え：</strong>Qwenが「エンジン」、Ollamaが「エンジンを積んで走る車」のようなもの。<br>
+      エンジンだけあっても車は走れず、Ollamaがあってはじめてアプリから呼び出せる。<br><br>
+      <strong>OpenAI互換APIの意味：</strong><br>
+      OllamaはOpenAIのAPIと同じエンドポイント・形式でリクエストを受け付ける。<br>
+      つまり、<code>AzureOpenAI</code> を使っていたコードを <code>OpenAI(base_url="http://localhost:11434/v1")</code> に変えるだけで、Qwenをそのまま使える。
+    </div>
+
+    <h3>💡 なぜこの技術選定か</h3>
+    <table>
+      <thead><tr><th>選定理由</th><th>内容</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><strong>ローカル完結</strong></td>
+          <td>外部APIに依存しないため、クラウド申請待ちや通信制限を回避できる。社内ネットワーク内で完結</td>
+        </tr>
+        <tr>
+          <td><strong>コスト</strong></td>
+          <td>API課金なし。GPUさえあれば無制限に使える</td>
+        </tr>
+        <tr>
+          <td><strong>コード変更が最小</strong></td>
+          <td>OllamaのOpenAI互換APIにより、Azure OpenAI版からの変更箇所が極めて少ない</td>
+        </tr>
+        <tr>
+          <td><strong>スケーラビリティ</strong></td>
+          <td>.envの2行を変えるだけでモデルサイズを切り替えられる。開発→本番の移行が簡単</td>
+        </tr>
+        <tr>
+          <td><strong>オープンソース</strong></td>
+          <td>Qwen / Ollama / faster-whisper すべてOSS。ライセンスがクリアで社内利用に適する</td>
         </tr>
       </tbody>
     </table>
