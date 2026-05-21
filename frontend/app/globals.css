@@ -1,0 +1,37 @@
+@import "tailwindcss";
+
+:root {
+  /* ネイビー系：深いコバルトネイビー */
+  --navy: #0a2d6e;
+  --navy-dark: #051d50;
+  --navy-light: #1248a8;
+  /* 日向坂カラー系：明るい空色 */
+  --sky: #5bb8e8;
+  --sky-mid: #7ecbf0;
+  --sky-light: #a8dcf5;
+  --sky-pale: #ddf1fb;
+  --sky-faint: #f0f9fe;
+  --white: #ffffff;
+  --gray-100: #f0f6fa;
+  --gray-200: #d8e8f2;
+  --gray-500: #5a7a9a;
+  --foreground: #0a2d6e;
+}
+
+body {
+  background: linear-gradient(160deg, #dff0f9 0%, #eaf5fc 35%, #f0f8fd 65%, #f5f8fa 100%);
+  min-height: 100vh;
+  color: var(--foreground);
+  font-family: "Noto Sans JP", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+.scrollbar-thin::-webkit-scrollbar {
+  width: 4px;
+}
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: transparent;
+}
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: var(--sky-light);
+  border-radius: 2px;
+}

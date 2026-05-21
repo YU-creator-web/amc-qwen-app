@@ -1,0 +1,1608 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Demo App — 開発まとめ・セットアップガイド</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: "Noto Sans JP", "Segoe UI", "Yu Gothic", sans-serif;
+      background: linear-gradient(160deg, #dff0f9 0%, #f0f8fd 60%, #f5f8fa 100%);
+      color: #1e3a5f;
+      min-height: 100vh;
+      padding: 0 0 80px;
+    }
+    header {
+      background: linear-gradient(135deg, #051d50 0%, #0a2d6e 50%, #1248a8 100%);
+      color: white;
+      padding: 30px 40px 24px;
+      box-shadow: 0 4px 20px rgba(5,29,80,0.45);
+      border-bottom: 2.5px solid;
+      border-image: linear-gradient(90deg, transparent, #5bb8e8, #a8dcf5, transparent) 1;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    header h1 { font-size: 1.55rem; font-weight: 700; letter-spacing: 0.04em; }
+    header p  { margin-top: 6px; font-size: 0.88rem; opacity: 0.75; }
+
+    /* TOC */
+    .toc {
+      background: rgba(255,255,255,0.92);
+      border: 1px solid rgba(91,184,232,0.3);
+      border-radius: 16px;
+      padding: 24px 28px;
+      margin: 32px auto 0;
+      max-width: 960px;
+      padding-left: 24px;
+      padding-right: 24px;
+    }
+    .toc h2 { font-size: 1rem; color: #0a2d6e; margin-bottom: 12px; border-bottom: none; padding-bottom: 0; }
+    .toc ol { columns: 2; gap: 20px; padding-left: 18px; }
+    .toc li { font-size: 0.84rem; line-height: 2; }
+    .toc a { color: #1248a8; text-decoration: none; }
+    .toc a:hover { text-decoration: underline; }
+    @media (max-width: 600px) { .toc ol { columns: 1; } }
+
+    .container { max-width: 960px; margin: 28px auto; padding: 0 24px; }
+
+    section {
+      background: rgba(255,255,255,0.88);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(59,159,209,0.18);
+      border-radius: 16px;
+      padding: 30px 34px;
+      margin-bottom: 26px;
+      box-shadow: 0 4px 24px rgba(30,58,95,0.07);
+      scroll-margin-top: 100px;
+    }
+    h2 {
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: #0a2d6e;
+      margin-bottom: 18px;
+      padding-bottom: 12px;
+      border-bottom: 2px solid #dff0f9;
+      display: flex;
+      align-items: center;
+      gap: 9px;
+    }
+    h3 {
+      font-size: 0.97rem;
+      font-weight: 700;
+      color: #1248a8;
+      margin: 20px 0 9px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    h4 {
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: #2d5090;
+      margin: 14px 0 6px;
+    }
+    p  { font-size: 0.9rem; line-height: 1.85; color: #2d4a6e; margin-bottom: 8px; }
+    ul, ol { padding-left: 22px; }
+    li { font-size: 0.88rem; line-height: 2; color: #2d4a6e; }
+
+    .plain-box {
+      background: #f0f8fd;
+      border: 1px solid #b8dff5;
+      border-radius: 10px;
+      padding: 16px 20px;
+      margin: 12px 0;
+      font-size: 0.88rem;
+      line-height: 1.85;
+      color: #1e3a5f;
+    }
+    .plain-box strong { color: #0a2d6e; }
+
+    .badge {
+      display: inline-block;
+      padding: 2px 10px;
+      border-radius: 20px;
+      font-size: 0.74rem;
+      font-weight: 700;
+      margin: 1px 2px;
+    }
+    .badge-blue   { background: #dff0f9; color: #0a2d6e; }
+    .badge-green  { background: #d1fae5; color: #065f46; }
+    .badge-yellow { background: #fef9c3; color: #78350f; }
+    .badge-red    { background: #fee2e2; color: #7f1d1d; }
+    .badge-purple { background: #ede9fe; color: #4c1d95; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.85rem;
+      margin-top: 10px;
+    }
+    th {
+      background: linear-gradient(135deg, #0a2d6e, #1248a8);
+      color: white;
+      padding: 10px 14px;
+      text-align: left;
+      font-weight: 600;
+    }
+    td {
+      padding: 9px 14px;
+      border-bottom: 1px solid #e8f0f8;
+      vertical-align: top;
+      line-height: 1.7;
+    }
+    tr:nth-child(even) td { background: #f4f9fd; }
+    tr:last-child td { border-bottom: none; }
+
+    pre, code {
+      font-family: "Consolas", "Monaco", "Courier New", monospace;
+      font-size: 0.82rem;
+    }
+    pre {
+      background: #0f2341;
+      color: #a8dcf5;
+      padding: 18px 22px;
+      border-radius: 10px;
+      overflow-x: auto;
+      line-height: 1.7;
+      margin: 10px 0;
+    }
+    pre .comment { color: #4a6fa0; font-style: italic; }
+    pre .highlight { color: #7ecbf0; font-weight: bold; }
+    pre .value { color: #98d4a3; }
+    code {
+      background: #dff0f9;
+      color: #0a2d6e;
+      padding: 1px 6px;
+      border-radius: 4px;
+    }
+    pre code { background: none; color: inherit; padding: 0; }
+
+    .arch-box {
+      background: #0f2341;
+      color: #7ecbf0;
+      border-radius: 12px;
+      padding: 22px 26px;
+      font-family: monospace;
+      font-size: 0.85rem;
+      line-height: 2.1;
+      overflow-x: auto;
+    }
+    .arch-box .hl  { color: #a8dcf5; font-weight: bold; }
+    .arch-box .ar  { color: #5bb8e8; }
+    .arch-box .cm  { color: #4a6fa0; font-style: italic; }
+
+    .file-tree {
+      background: #0f2341;
+      color: #7ecbf0;
+      border-radius: 10px;
+      padding: 18px 22px;
+      font-family: monospace;
+      font-size: 0.82rem;
+      line-height: 2;
+    }
+    .file-tree .dir  { color: #5bb8e8; font-weight: bold; }
+    .file-tree .cmt  { color: #4a6fa0; font-style: italic; }
+    .file-tree .key  { color: #f9d87b; }
+
+    .warning {
+      background: #fef3cd;
+      border-left: 4px solid #f6c23e;
+      border-radius: 6px;
+      padding: 12px 16px;
+      font-size: 0.87rem;
+      color: #6b4c00;
+      margin: 10px 0;
+      line-height: 1.7;
+    }
+    .info {
+      background: #dff0f9;
+      border-left: 4px solid #5bb8e8;
+      border-radius: 6px;
+      padding: 12px 16px;
+      font-size: 0.87rem;
+      color: #0a2d6e;
+      margin: 10px 0;
+      line-height: 1.7;
+    }
+    .success {
+      background: #d1fae5;
+      border-left: 4px solid #059669;
+      border-radius: 6px;
+      padding: 12px 16px;
+      font-size: 0.87rem;
+      color: #064e3b;
+      margin: 10px 0;
+      line-height: 1.7;
+    }
+    .danger {
+      background: #fee2e2;
+      border-left: 4px solid #dc2626;
+      border-radius: 6px;
+      padding: 12px 16px;
+      font-size: 0.87rem;
+      color: #7f1d1d;
+      margin: 10px 0;
+      line-height: 1.7;
+    }
+
+    .status-done    { color: #059669; font-weight: 700; }
+    .status-pending { color: #d97706; font-weight: 700; }
+
+    .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-top: 14px; }
+    @media (max-width: 640px) { .grid2 { grid-template-columns: 1fr; } }
+
+    .step-card {
+      background: white;
+      border: 1px solid #c8e4f5;
+      border-radius: 12px;
+      padding: 18px 22px;
+      margin: 12px 0;
+      position: relative;
+    }
+    .step-num {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 30px;
+      height: 30px;
+      background: linear-gradient(135deg, #0a2d6e, #1248a8);
+      color: white;
+      border-radius: 50%;
+      font-size: 0.85rem;
+      font-weight: 700;
+      margin-right: 10px;
+      flex-shrink: 0;
+    }
+    .step-title {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: #0a2d6e;
+      display: flex;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+    .step-card p, .step-card li { font-size: 0.87rem; }
+
+    .mode-card {
+      border: 1px solid #c8e4f5;
+      border-radius: 12px;
+      padding: 16px 20px;
+      margin-bottom: 14px;
+      background: white;
+    }
+    .mode-card h4 { margin-top: 0; font-size: 1rem; }
+
+    footer {
+      text-align: center;
+      font-size: 0.8rem;
+      color: #5a7a9a;
+      margin-top: 40px;
+      padding: 0 24px;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>🧠 Demo App — 開発まとめ・セットアップガイド</h1>
+  <p>Phase 2 実装版 ／ 更新日：2026-05-08 ／ GitHub: github.com/YU-creator-web/amc_app</p>
+</header>
+
+<!-- 目次 -->
+<div class="toc container">
+  <h2>📑 目次</h2>
+  <ol>
+    <li><a href="#s1">システムの目的（非エンジニア向け）</a></li>
+    <li><a href="#s2">3つの使い方（モード）</a></li>
+    <li><a href="#s3">システム全体の仕組み</a></li>
+    <li><a href="#s4">技術スタック</a></li>
+    <li><a href="#s5">ファイル構成</a></li>
+    <li><a href="#s6">実装済み機能の詳細</a></li>
+    <li><a href="#s7">データベース設計</a></li>
+    <li><a href="#s8">API エンドポイント一覧</a></li>
+    <li><a href="#s9">Azure OpenAI の設定</a></li>
+    <li><a href="#s10">既知の課題・今後の予定</a></li>
+    <li><a href="#s11">EC2 デプロイについて</a></li>
+    <li><a href="#s12">🖥️ 別端末セットアップ手順</a></li>
+    <li><a href="#s13">トラブルシューティング</a></li>
+    <li><a href="#s14">🚀 EC2 デプロイ手順（実施手順詳細）</a></li>
+    <li><a href="#s15">💬 Teams Bot vs 独自UI 音声対話比較</a></li>
+    <li><a href="#s16">🏢 会社AWS環境へのデプロイ時の注意点</a></li>
+  </ol>
+</div>
+
+<div class="container">
+
+  <!-- ===== 1. システムの目的 ===== -->
+  <section id="s1">
+    <h2>📋 1. システムの目的（非エンジニア向け）</h2>
+
+    <div class="plain-box">
+      <strong>一言で言うと：</strong>「ベテラン社員の頭の中にある、マニュアルに書いていない判断ノウハウを、AIとの音声対話で引き出して、データとして保存・共有するシステム」です。
+    </div>
+
+    <h3>🤔 なぜこのシステムが必要なのか</h3>
+    <p>
+      業務マニュアルには「手順」は書いてあっても、「なぜそうするのか」「このケースではどう判断するのか」という<strong>経験に裏打ちされた判断基準</strong>は書かれていないことがほとんどです。
+      これを「暗黙知」と呼びます。
+    </p>
+    <p>
+      ベテラン社員が退職・異動すると、その知識は失われてしまいます。このシステムは、AI（音声ボット）がインタビュアーとなって、ベテランとの自然な対話からその暗黙知を自動で抽出・保存します。
+    </p>
+
+    <h3>💡 このシステムでできること</h3>
+    <div class="plain-box">
+      <strong>① 知識の収集：</strong> ベテラン社員とAIが音声で対話。「マニュアルにないケースはどう判断しますか？」といった問いかけから経験則を引き出します。<br><br>
+      <strong>② 知識の整理：</strong> 対話内容をAIが自動分析し、「判断基準・適用条件・注意点」の形式に整理して保存します。<br><br>
+      <strong>③ 知識の共有：</strong> 保存した知識を使って、新人・未熟練者に音声でレクチャーしたり、質問に答えたりします。
+    </div>
+  </section>
+
+  <!-- ===== 2. 3つのモード ===== -->
+  <section id="s2">
+    <h2>🎯 2. 3つの使い方（モード）</h2>
+
+    <div class="mode-card">
+      <h4>🎙️ インタビューモード</h4>
+      <p><strong>誰が使う：</strong> ベテラン社員（知識を持っている人）</p>
+      <p><strong>何をするか：</strong> AIボットがインタビュアーとなり、業務マニュアルをベースに「マニュアルに書かれていない判断をする場面はありますか？」などの質問を投げかけます。話者はマイクで答えるだけ。対話終了後に「完了」ボタンを押すと自動的に暗黙知の抽出・保存が始まります。</p>
+      <p><strong>流れ：</strong> 業務区分を選ぶ → マニュアルをアップロード（任意） → 名前を入力 → 音声対話 → 「完了」ボタンで終了・自動抽出</p>
+      <p><strong>深堀りレベル：</strong> スライダーで1〜8段階に設定可能。高いほど同一テーマへの深堀り回数が増えます（デフォルト：4回）。</p>
+    </div>
+
+    <div class="mode-card">
+      <h4>📋 確認・編集モード</h4>
+      <p><strong>誰が使う：</strong> 管理者・コンテンツ担当者</p>
+      <p><strong>何をするか：</strong> 蓄積された暗黙知の一覧を確認・編集・削除できます。過去の対話セッションの録音ログを閲覧したり、再度「解析・保存」したりもできます。業務区分でフィルタリング可能。</p>
+      <p><strong>特徴：</strong> カテゴリ未選択でも全データを表示。セッション履歴の削除も可能。</p>
+    </div>
+
+    <div class="mode-card">
+      <h4>📚 レクチャーモード</h4>
+      <p><strong>誰が使う：</strong> 新人・未熟練者（知識を学ぶ人）</p>
+      <p><strong>何をするか：</strong> 蓄積した暗黙知を使ってAIが音声で教えます。「対話モード（自由に質問できる）」と「テスト・問答モード（ボットが問いかける）」を選べます。</p>
+      <p><strong>流れ：</strong> 業務区分を選ぶ → モードを選ぶ → 名前を入力 → レクチャー開始 → 「完了」ボタンで終了</p>
+    </div>
+
+    <table>
+      <tr><th>モード</th><th>対象ユーザー</th><th>主な機能</th><th>状態</th></tr>
+      <tr>
+        <td><strong>インタビュー</strong></td>
+        <td>ベテラン社員</td>
+        <td>音声インタビュー・自動構造化・DB保存</td>
+        <td><span class="status-done">✅ 完了</span></td>
+      </tr>
+      <tr>
+        <td><strong>確認・編集</strong></td>
+        <td>管理者</td>
+        <td>一覧・編集・削除・セッション履歴・再抽出</td>
+        <td><span class="status-done">✅ 完了</span></td>
+      </tr>
+      <tr>
+        <td><strong>レクチャー</strong></td>
+        <td>未熟練者</td>
+        <td>音声対話・テスト問答</td>
+        <td><span class="status-done">✅ 基本実装完了</span></td>
+      </tr>
+    </table>
+  </section>
+
+  <!-- ===== 3. システム全体の仕組み ===== -->
+  <section id="s3">
+    <h2>🏗️ 3. システム全体の仕組み</h2>
+
+    <h3>🔧 技術的な構成（エンジニア向け）</h3>
+    <div class="arch-box">
+<span class="hl">【ブラウザ（ユーザーの画面）】</span>  localhost:3000<br>
+  Next.js 16 (React) — TypeScript / Tailwind CSS<br>
+  ・WebAudio API：マイクから音声をキャプチャ (PCM16 / 24kHz)<br>
+  ・ScriptProcessorNode で 4096サンプル単位で base64 エンコード → 送信<br>
+  ・AudioContext + nextAudioTimeRef でチャンク再生をキューイング<br>
+  ・AudioContext は WebSocket 接続時に事前初期化（最初の語句途切れ防止）<br>
+  ・isBotSpeaking 状態で AudioBufferSourceNode の再生完了を追跡<br>
+  ・VAD: 自動モード(server_vad) / 手動モード(push-to-talk)<br>
+  ・スペースキー：音声送信のショートカット（INPUT/TEXTAREA/BUTTON要素では無効）<br>
+<br>
+    <span class="ar">↕ WebSocket  ws://localhost:8000/ws/voice/{session_id}</span><br>
+    <span class="ar">↕ REST API   http://localhost:8000/api/...</span><br>
+<br>
+<span class="hl">【バックエンド（FastAPI）】</span>  localhost:8000<br>
+  Python + uvicorn<br>
+  ・WebSocket プロキシ：ブラウザ ↔ Azure 間を中継（双方向 asyncio.gather）<br>
+  ・対話ログ保存：conversation.item.input_audio_transcription.completed / response.audio_transcript.done<br>
+  ・システムプロンプト切替：session.mode に応じて抽出用 / レクチャー用を使い分け<br>
+  ・暗黙知構造化：gpt-5.4 に JSON形式で解析依頼 → TacitKnowledge テーブルへ保存<br>
+  ・asyncio.to_thread() で同期AI呼び出しをイベントループから分離<br>
+  ・グローバル例外ハンドラで500エラー時にも CORS ヘッダーを付与<br>
+  ・SQLite (anmokuchi.db) — SQLAlchemy ORM<br>
+<br>
+    <span class="ar">↕ WSS  wss://{resource}.cognitiveservices.azure.com/openai/realtime</span><br>
+    <span class="ar">↕ HTTPS {resource}.cognitiveservices.azure.com/openai/deployments/.../chat/completions</span><br>
+<br>
+<span class="hl">【Azure OpenAI (East US 2)】</span><br>
+  gpt-realtime-1.5          <span class="cm">← 音声リアルタイム対話（Realtimeモデル）</span><br>
+  gpt-4o-mini-transcribe    <span class="cm">← 音声→テキスト 文字起こし（UI表示用）</span><br>
+  gpt-5.4                   <span class="cm">← 暗黙知の構造化・STT補正（Chat Completions API）</span>
+    </div>
+
+    <h3>💬 非エンジニア向け説明</h3>
+    <div class="plain-box">
+      このシステムは3つの部品から成り立っています。<br><br>
+      <strong>① ブラウザ（見える部分）：</strong> ユーザーが操作する画面です。マイクで話すと声を録音してサーバーに送り、AIの返答音声を受け取って再生します。<br><br>
+      <strong>② バックエンド（橋渡し）：</strong> ブラウザとAzureの間を仲介するサーバーです。ローカルPC上で動きます。会話の記録をデータベースに保存する役割も担います。<br><br>
+      <strong>③ Azure OpenAI（AI本体）：</strong> マイクロソフトのクラウド上で動くAIです。音声を理解し、会話を行い、暗黙知を分析します。インターネット接続が必要です。
+    </div>
+  </section>
+
+  <!-- ===== 4. 技術スタック ===== -->
+  <section id="s4">
+    <h2>🛠️ 4. 技術スタック</h2>
+    <div class="grid2">
+      <div>
+        <h3>フロントエンド</h3>
+        <table>
+          <tr><th>技術</th><th>バージョン</th><th>用途</th></tr>
+          <tr><td>Next.js (App Router)</td><td>16.2.5</td><td>フレームワーク</td></tr>
+          <tr><td>React</td><td>19.2.4</td><td>UI ライブラリ</td></tr>
+          <tr><td>TypeScript</td><td>5.x</td><td>型安全</td></tr>
+          <tr><td>Tailwind CSS</td><td>v4</td><td>スタイリング</td></tr>
+          <tr><td>WebAudio API</td><td>—</td><td>マイク音声キャプチャ</td></tr>
+          <tr><td>WebSocket</td><td>—</td><td>音声バイナリ通信</td></tr>
+          <tr><td>lucide-react</td><td>1.14.0</td><td>アイコン（Settings, Brain 等）</td></tr>
+        </table>
+      </div>
+      <div>
+        <h3>バックエンド</h3>
+        <table>
+          <tr><th>技術</th><th>バージョン</th><th>用途</th></tr>
+          <tr><td>Python</td><td>3.11〜3.13</td><td>ランタイム</td></tr>
+          <tr><td>FastAPI</td><td>0.115.12</td><td>Web フレームワーク</td></tr>
+          <tr><td>uvicorn</td><td>0.34.0</td><td>ASGI サーバー</td></tr>
+          <tr><td>SQLAlchemy</td><td>2.0.40</td><td>ORM</td></tr>
+          <tr><td>SQLite</td><td>—</td><td>DB（ファイル1つ）</td></tr>
+          <tr><td>pydantic-settings</td><td>2.9.1</td><td>.env 読み込み</td></tr>
+          <tr><td>websockets</td><td>15.0.1</td><td>Azure WS プロキシ</td></tr>
+          <tr><td>openai (Azure)</td><td>1.79.0</td><td>AI 呼び出し</td></tr>
+          <tr><td>pdfplumber / python-docx</td><td>—</td><td>マニュアルPDF/DOCX解析</td></tr>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== 5. ファイル構成 ===== -->
+  <section id="s5">
+    <h2>📁 5. ファイル構成</h2>
+    <div class="file-tree">
+<span class="dir">amc_app/</span>  <span class="cmt">← git clone したフォルダ（ローカルでは anmokuchi-app）</span><br>
+├── <span class="dir">backend/</span>                        <span class="cmt">← Python サーバー</span><br>
+│   ├── <span class="key">main.py</span>                     <span class="cmt"># FastAPI エントリポイント・CORS設定・グローバル例外ハンドラ</span><br>
+│   ├── <span class="key">database.py</span>                 <span class="cmt"># DB モデル定義・.env 設定クラス（デフォルト: gpt-5.4）</span><br>
+│   ├── <span class="key">.env</span>                        <span class="cmt"># ★要作成 APIキー等（gitignore済み）</span><br>
+│   ├── <span class="key">.env.example</span>               <span class="cmt"># .env のサンプル（中身は仮の値）</span><br>
+│   ├── <span class="key">anmokuchi.db</span>                <span class="cmt"># SQLite DB（起動時に自動生成）</span><br>
+│   ├── <span class="key">requirements.txt</span>            <span class="cmt"># 依存パッケージ一覧</span><br>
+│   ├── <span class="key">uploads/</span>                    <span class="cmt"># マニュアルファイルの保存先（自動生成）</span><br>
+│   ├── <span class="dir">routers/</span>                    <span class="cmt"># API ルーター</span><br>
+│   │   ├── <span class="key">voice.py</span>                <span class="cmt"># WebSocket音声プロキシ・暗黙知構造化API・1秒待機</span><br>
+│   │   ├── <span class="key">categories.py</span>           <span class="cmt"># 業務区分 CRUD（削除時 CASCADE）</span><br>
+│   │   ├── <span class="key">manuals.py</span>              <span class="cmt"># マニュアルアップロード・削除</span><br>
+│   │   ├── <span class="key">sessions.py</span>             <span class="cmt"># セッション作成・終了・削除・ログ取得</span><br>
+│   │   └── <span class="key">tacit_knowledge.py</span>      <span class="cmt"># 暗黙知 CRUD</span><br>
+│   └── <span class="dir">services/</span><br>
+│       └── <span class="key">ai_service.py</span>           <span class="cmt"># AIプロンプト生成・構造化・STT補正ロジック（gpt-5.4使用）</span><br>
+├── <span class="dir">frontend/</span>                       <span class="cmt">← Next.js フロントエンド</span><br>
+│   ├── <span class="dir">app/</span><br>
+│   │   ├── <span class="key">page.tsx</span>                <span class="cmt"># メインページ（タブ切替・設定モーダル管理）</span><br>
+│   │   ├── <span class="key">layout.tsx</span>              <span class="cmt"># HTML ルートレイアウト（タイトル：Demo App）</span><br>
+│   │   ├── <span class="key">globals.css</span>             <span class="cmt"># CSS変数（navy/sky カラー）・グローバルスタイル</span><br>
+│   │   └── <span class="dir">components/</span><br>
+│   │       ├── <span class="key">Header.tsx</span>          <span class="cmt"># ヘッダー（タイトルクリックでホーム・右上歯車ボタン）</span><br>
+│   │       ├── <span class="key">SettingsModal.tsx</span>   <span class="cmt"># 設定モーダル（業務区分の追加・削除）NEW</span><br>
+│   │       ├── <span class="dir">extraction/</span><br>
+│   │       │   ├── <span class="key">ExtractionMode.tsx</span>  <span class="cmt"># 抽出フロー（深堀りレベル設定・完了で自動抽出）</span><br>
+│   │       │   └── <span class="key">VoiceChat.tsx</span>       <span class="cmt"># 音声対話コア（AudioContext事前初期化・Space送信・発話停止）</span><br>
+│   │       ├── <span class="dir">review/</span><br>
+│   │       │   └── <span class="key">ReviewMode.tsx</span>      <span class="cmt"># データ一覧・編集・セッション履歴・再抽出</span><br>
+│   │       └── <span class="dir">lecture/</span><br>
+│   │           └── <span class="key">LectureMode.tsx</span>     <span class="cmt"># レクチャーモード（対話/テスト選択・完了コールバック修正済）</span><br>
+│   └── <span class="dir">lib/</span><br>
+│       └── <span class="key">api.ts</span>                  <span class="cmt"># 全API呼び出し関数・型定義（deleteCategory追加）</span><br>
+├── <span class="dir">docs/</span><br>
+│   ├── <span class="key">development-summary.html</span>    <span class="cmt"># このファイル</span><br>
+│   └── <span class="dir">test-materials/</span>             <span class="cmt"># テスト用素材（NEW）</span><br>
+│       ├── <span class="key">account_opening_manual.pdf</span>  <span class="cmt"># 口座開設マニュアル（ダミーデータ）</span><br>
+│       ├── <span class="key">fraud_investigation_manual.pdf</span>  <span class="cmt"># 不正利用調査マニュアル（ダミーデータ）NEW</span><br>
+│       ├── <span class="key">expected_tacit_knowledge.md</span>     <span class="cmt"># 口座開設の想定暗黙知</span><br>
+│       └── <span class="key">expected_tacit_knowledge_fraud.md</span> <span class="cmt"># 不正利用調査の想定暗黙知 NEW</span><br>
+├── <span class="key">.gitignore</span>                      <span class="cmt"># .env / node_modules / venv / *.db 除外</span><br>
+└── <span class="key">spec.md</span>                         <span class="cmt"># 仕様書（開発メモ）</span>
+    </div>
+    <div class="info">
+      💡 <code>venv/</code>（Python仮想環境）と <code>node_modules/</code>（Node.jsパッケージ）は gitignore されているため、クローン後に別途インストールが必要です。セットアップ手順は <a href="#s12">第12章</a> を参照。
+    </div>
+  </section>
+
+  <!-- ===== 6. 実装済み機能の詳細 ===== -->
+  <section id="s6">
+    <h2>✅ 6. 実装済み機能の詳細</h2>
+
+    <h3>🎙️ 音声対話エンジン（VoiceChat.tsx + voice.py）</h3>
+    <ul>
+      <li>ブラウザのマイクから音声を PCM16 (24kHz) でキャプチャし、base64エンコードして WebSocket 経由でバックエンドへ送信</li>
+      <li>バックエンドは受信した音声データを Azure OpenAI Realtime API にプロキシ転送（双方向ストリーミング）</li>
+      <li>AIからの音声返答チャンクを <code>nextAudioTimeRef</code> を使って順番にキューイング再生（重複再生を防止）</li>
+      <li><strong>AudioContext 事前初期化：</strong> WebSocket 接続確立時（<code>ws.onopen</code>）に AudioContext を生成・resume しておくことで、最初の発話語句の途切れを防止。以前は最初の音声チャンク到着時に初期化していたため約200msの切り落としが発生していた</li>
+      <li><strong>isBotSpeaking 状態管理：</strong> <code>AudioBufferSourceNode</code> の <code>onended</code> イベントと、全チャンクが再生完了したかどうかのカウンタで正確に「ボットが話し中かどうか」を管理。「発話を止める」ボタンの表示/非表示がこの状態に基づく</li>
+      <li>UI にリアルタイムで文字起こしテキストを表示（gpt-4o-mini-transcribe）</li>
+      <li><strong>VADモード切替：</strong>
+        <ul>
+          <li>自動モード：2.5秒の無音を検知して自動的に発話終了と判断</li>
+          <li>手動モード（Push-to-talk）：ボタンを押したタイミングで発話を送信</li>
+        </ul>
+      </li>
+      <li><strong>スペースキーショートカット：</strong> スペースキーで音声送信の開始/停止が可能。フォーム入力中（INPUT/TEXTAREA/BUTTON）では無効化</li>
+      <li><strong>録音中の表示：</strong>「録音中」→「解析中...」に変更（STT処理中であることを明示）</li>
+      <li><strong>ボット発話後の待機時間：</strong> AI返答後に1秒待機してから録音を再開（以前は2秒）</li>
+      <li>セッションIDに紐づいたシステムプロンプトの自動切替（抽出用 / レクチャー用）</li>
+      <li><strong>STT補正：</strong> 音声認識テキストを gpt-5.4 でビジネス文脈の誤変換補正してからDBに保存</li>
+      <li><strong>完了ボタン：</strong> VoiceChat に <code>onComplete</code> コールバックを受け取る設計。録音停止・WebSocket切断・親コンポーネントへのコールバック呼び出しを一括実行</li>
+    </ul>
+
+    <h3>📥 インタビューフロー（ExtractionMode.tsx）</h3>
+    <ul>
+      <li>業務区分の選択（設定モーダルで追加・削除も可能）</li>
+      <li>業務マニュアルのアップロード（PDF / DOCX / TXT 対応）→ テキスト抽出してシステムプロンプトに埋め込み</li>
+      <li><strong>深堀りレベル設定：</strong> 1〜8のスライダーで同一テーマへの深堀り質問回数を設定。セッション作成時にバックエンドへ渡し、AIプロンプトに反映</li>
+      <li>話者名入力 → セッション作成 → 音声対話開始</li>
+      <li>「完了」ボタンで録音停止 + WebSocket切断 → 自動的にインタビュー開始（1秒後）→ 結果表示</li>
+      <li>エラー発生時のリカバリ画面（「会話に戻る」「新しいセッションを始める」ボタン）</li>
+      <li><strong>ホームボタン：</strong> ヘッダーの「Demo App」タイトルクリックで抽出モードのトップに戻る。<code>key</code> をインクリメントしてコンポーネントをリセット</li>
+    </ul>
+
+    <h3>🔧 ヘッダー・ナビゲーション（Header.tsx / page.tsx）</h3>
+    <ul>
+      <li><strong>タイトルボタン化：</strong> ヘッダー左上の「Demo App」をクリックすると抽出モードのトップに戻る（Brain アイコン付き）</li>
+      <li><strong>設定（歯車）ボタン：</strong> ヘッダー右上に歯車アイコンを追加。クリックで設定モーダルを開く</li>
+      <li>3つのモードタブ（インタビュー・確認・編集・レクチャー）</li>
+    </ul>
+
+    <h3>⚙️ 設定モーダル（SettingsModal.tsx）</h3>
+    <ul>
+      <li>業務区分の一覧表示</li>
+      <li>新規業務区分の追加（Enter キーでも追加可能）</li>
+      <li>業務区分の削除（削除時に関連するマニュアル・セッション・暗黙知も CASCADE で削除）</li>
+      <li>モーダル外クリックで閉じる</li>
+      <li>追加・削除後に <code>onCategoryChange</code> コールバックで抽出モードのカテゴリ一覧を自動更新</li>
+    </ul>
+
+    <h3>📋 確認・編集モード（ReviewMode.tsx）</h3>
+    <ul>
+      <li>全暗黙知を業務区分フィルタなしで一括表示（カテゴリ選択でフィルタリング可）</li>
+      <li>各暗黙知のインライン編集（業務フロー名・判断基準・適用条件・備考）</li>
+      <li>各暗黙知の削除</li>
+      <li>セッション履歴タブ：過去セッションの一覧（話者名・開始日時 JST表示）</li>
+      <li>セッションの発話ログ閲覧（チャット形式）</li>
+      <li>過去セッションから「解析・保存」ボタン（再抽出・追加保存）</li>
+      <li>セッションの削除（発話ログも CASCADE で一緒に削除）</li>
+    </ul>
+
+    <h3>📚 レクチャーモード（LectureMode.tsx）</h3>
+    <ul>
+      <li>対話モード：学習者が自由に質問し、AIが暗黙知DBをもとに回答</li>
+      <li>テスト・問答モード：AIが積極的に問いかけを行う</li>
+      <li>業務区分・名前を選択してレクチャー開始</li>
+      <li>音声対話は VoiceChat コンポーネントを再利用</li>
+      <li><strong>完了コールバック修正済：</strong> <code>onComplete={() => setSession(null)}</code> を正しく渡すよう修正（以前は <code>onComplete is not a function</code> エラーが発生）</li>
+      <li><strong>最初の発話改善：</strong> システムプロンプトに「承知しました・了解しました などの確認フレーズを使わない」ルールを追加</li>
+    </ul>
+
+    <h3>🤖 AI プロンプト設計（ai_service.py）</h3>
+    <ul>
+      <li><strong>抽出プロンプト（build_extraction_system_prompt）：</strong>
+        <ul>
+          <li>マニュアルの章立てに沿って順番に質問</li>
+          <li>深堀りレベル（<code>deep_dive_level</code>）回数の上限を明示</li>
+          <li>「ない」という回答でも1〜2回角度を変えて再質問するルール</li>
+          <li>スコープ維持ルール：業務以外の話題には応じない</li>
+          <li>最初のターンルール：確認フレーズ不使用・マニュアル第1章の内容で即開始</li>
+        </ul>
+      </li>
+      <li><strong>レクチャープロンプト（build_lecture_system_prompt）：</strong>
+        <ul>
+          <li>蓄積暗黙知をコンテキストとして埋め込み</li>
+          <li>最初のターンルール：確認フレーズ不使用・すぐに具体的な内容へ</li>
+        </ul>
+      </li>
+      <li><strong>暗黙知構造化（structure_tacit_knowledge）：</strong>
+        <ul>
+          <li>gpt-5.4 (Chat Completions API) で対話ログを JSON 構造化</li>
+          <li>STT誤変換をボット発言の文脈から補正して解釈</li>
+          <li>コードブロック囲みの JSON を正規化して parse</li>
+        </ul>
+      </li>
+    </ul>
+  </section>
+
+  <!-- ===== 7. データベース設計 ===== -->
+  <section id="s7">
+    <h2>🗄️ 7. データベース設計（SQLite）</h2>
+    <div class="plain-box">
+      SQLite はファイル1つ（<code>backend/anmokuchi.db</code>）でデータを管理します。サーバー起動時に自動生成されるため、事前の設定は不要です。
+    </div>
+
+    <table>
+      <tr><th>テーブル名</th><th>主なカラム</th><th>説明</th></tr>
+      <tr>
+        <td><code>business_categories</code></td>
+        <td>id, name, created_at</td>
+        <td>業務区分（例：口座開設、銀行口座の不正利用調査）。起動時に「口座開設」が自動挿入される。設定モーダルから追加・削除可能</td>
+      </tr>
+      <tr>
+        <td><code>manuals</code></td>
+        <td>id, business_category_id, file_name, file_path, content_text, uploaded_at</td>
+        <td>アップロードされた業務マニュアルのメタ情報とテキスト</td>
+      </tr>
+      <tr>
+        <td><code>sessions</code></td>
+        <td>id, business_category_id, speaker_name, mode, started_at, ended_at</td>
+        <td>対話セッション。mode は extraction / lecture_test / lecture_dialogue</td>
+      </tr>
+      <tr>
+        <td><code>dialogue_logs</code></td>
+        <td>id, session_id, speaker(user/bot), text, timestamp</td>
+        <td>発話ログ。sessions 削除時に CASCADE で連鎖削除</td>
+      </tr>
+      <tr>
+        <td><code>tacit_knowledge</code></td>
+        <td>id, business_category_id, session_id, business_flow_name, judgment_criteria, applicable_conditions, notes, created_at, updated_at</td>
+        <td>AIが構造化した暗黙知。1セッションから複数件保存される</td>
+      </tr>
+    </table>
+
+    <h3>テーブルの関係</h3>
+    <div class="arch-box" style="line-height:1.8; font-size:0.82rem;">
+business_categories <span class="ar">─── 1:N ───</span> manuals<br>
+business_categories <span class="ar">─── 1:N ───</span> sessions <span class="ar">─── 1:N ───</span> dialogue_logs<br>
+business_categories <span class="ar">─── 1:N ───</span> tacit_knowledge<br>
+sessions            <span class="ar">─── 1:N ───</span> tacit_knowledge
+    </div>
+  </section>
+
+  <!-- ===== 8. API エンドポイント ===== -->
+  <section id="s8">
+    <h2>🔌 8. API エンドポイント一覧</h2>
+    <div class="info">すべてのエンドポイントは <code>http://localhost:8000</code> ベース。APIドキュメントは起動後に <code>http://localhost:8000/docs</code> で確認できます。</div>
+    <table>
+      <tr><th>メソッド</th><th>パス</th><th>説明</th></tr>
+      <tr><td><span class="badge badge-green">GET</span></td><td>/health</td><td>サーバー起動確認用ヘルスチェック</td></tr>
+      <tr><td colspan="3" style="background:#f0f8fd; font-weight:700; color:#0a2d6e;">業務区分</td></tr>
+      <tr><td><span class="badge badge-green">GET</span></td><td>/api/categories</td><td>業務区分の一覧取得</td></tr>
+      <tr><td><span class="badge badge-blue">POST</span></td><td>/api/categories</td><td>新規業務区分の作成（設定モーダルから利用）</td></tr>
+      <tr><td><span class="badge badge-red">DELETE</span></td><td>/api/categories/{id}</td><td>業務区分の削除（関連データも CASCADE）</td></tr>
+      <tr><td colspan="3" style="background:#f0f8fd; font-weight:700; color:#0a2d6e;">マニュアル</td></tr>
+      <tr><td><span class="badge badge-green">GET</span></td><td>/api/manuals?category_id=</td><td>マニュアル一覧（業務区分でフィルタ）</td></tr>
+      <tr><td><span class="badge badge-blue">POST</span></td><td>/api/manuals</td><td>マニュアルファイルのアップロード</td></tr>
+      <tr><td><span class="badge badge-red">DELETE</span></td><td>/api/manuals/{id}</td><td>マニュアルの削除</td></tr>
+      <tr><td colspan="3" style="background:#f0f8fd; font-weight:700; color:#0a2d6e;">セッション</td></tr>
+      <tr><td><span class="badge badge-green">GET</span></td><td>/api/sessions</td><td>全セッション一覧（category_id でフィルタ可）</td></tr>
+      <tr><td><span class="badge badge-blue">POST</span></td><td>/api/sessions</td><td>新規セッションの作成（deep_dive_level を含む）</td></tr>
+      <tr><td><span class="badge badge-blue">POST</span></td><td>/api/sessions/{id}/end</td><td>セッションの終了（ended_at 記録）</td></tr>
+      <tr><td><span class="badge badge-red">DELETE</span></td><td>/api/sessions/{id}</td><td>セッションと発話ログの削除（CASCADE）</td></tr>
+      <tr><td><span class="badge badge-green">GET</span></td><td>/api/sessions/{id}/logs</td><td>セッションの発話ログ一覧</td></tr>
+      <tr><td><span class="badge badge-blue">POST</span></td><td>/api/sessions/{id}/structure</td><td>発話ログをAI(gpt-5.4)で分析して暗黙知を保存</td></tr>
+      <tr><td colspan="3" style="background:#f0f8fd; font-weight:700; color:#0a2d6e;">暗黙知</td></tr>
+      <tr><td><span class="badge badge-green">GET</span></td><td>/api/tacit-knowledge</td><td>全データ一覧（category_id でフィルタ可）</td></tr>
+      <tr><td><span class="badge badge-yellow">PUT</span></td><td>/api/tacit-knowledge/{id}</td><td>暗黙知の編集</td></tr>
+      <tr><td><span class="badge badge-red">DELETE</span></td><td>/api/tacit-knowledge/{id}</td><td>暗黙知の削除</td></tr>
+      <tr><td colspan="3" style="background:#f0f8fd; font-weight:700; color:#0a2d6e;">音声</td></tr>
+      <tr><td><span class="badge badge-purple">WS</span></td><td>/ws/voice/{session_id}</td><td>音声 WebSocket プロキシ（Azure OpenAI Realtime と中継）</td></tr>
+    </table>
+  </section>
+
+  <!-- ===== 9. Azure OpenAI の設定 ===== -->
+  <section id="s9">
+    <h2>☁️ 9. Azure OpenAI の設定</h2>
+    <div class="info">Azure AI Foundry (<strong>ai.azure.com</strong>) → モデルカタログ → デプロイ から設定します。推奨リージョン：<strong>East US 2</strong>（gpt-realtime-1.5 の提供リージョン）</div>
+
+    <table>
+      <tr><th>用途</th><th>使用モデル</th><th>デプロイ名（.envに設定）</th><th>必須度</th></tr>
+      <tr>
+        <td>音声リアルタイム対話<br><small>AIボットとの会話本体</small></td>
+        <td>gpt-realtime-1.5</td>
+        <td><code>AZURE_OPENAI_REALTIME_DEPLOYMENT=gpt-realtime-1.5</code></td>
+        <td><span class="badge badge-red">必須</span></td>
+      </tr>
+      <tr>
+        <td>音声文字起こし<br><small>UI上のテキスト表示</small></td>
+        <td>gpt-4o-mini-transcribe</td>
+        <td><code>AZURE_OPENAI_TRANSCRIBE_DEPLOYMENT=gpt-4o-mini-transcribe</code></td>
+        <td><span class="badge badge-yellow">推奨</span></td>
+      </tr>
+      <tr>
+        <td>暗黙知の構造化<br><small>対話→JSON変換・STT補正</small></td>
+        <td><strong>gpt-5.4</strong></td>
+        <td><code>AZURE_OPENAI_EXTRACT_DEPLOYMENT=gpt-5.4</code></td>
+        <td><span class="badge badge-red">必須</span></td>
+      </tr>
+      <tr>
+        <td>チャット用途（汎用）</td>
+        <td><strong>gpt-5.4</strong></td>
+        <td><code>AZURE_OPENAI_CHAT_DEPLOYMENT=gpt-5.4</code></td>
+        <td><span class="badge badge-red">必須</span></td>
+      </tr>
+    </table>
+
+    <div class="warning">
+      ⚠️ <strong>モデル選定の注意：</strong> gpt-5.4-pro（推論モデル）は Responses API のみ対応で Chat Completions API では使えません。gpt-5.4（非 pro）は通常の Chat Completions API で動作し、暗黙知構造化に適しています。
+    </div>
+    <div class="info">
+      💡 <code>REALTIME_KEY</code> / <code>TRANSCRIBE_KEY</code> / <code>CHAT_KEY</code> はすべて同じ Azure OpenAI リソースの同じキーでOKです。Azure ポータル → Azure OpenAI リソース →「キーとエンドポイント」で確認できます。
+    </div>
+
+    <h3>📄 .env ファイルの内容（例）</h3>
+    <pre><code>AZURE_OPENAI_ENDPOINT=https://&lt;リソース名&gt;.cognitiveservices.azure.com
+AZURE_OPENAI_API_VERSION=2025-04-01-preview
+AZURE_OPENAI_REALTIME_DEPLOYMENT=gpt-realtime-1.5
+AZURE_OPENAI_TRANSCRIBE_DEPLOYMENT=gpt-4o-mini-transcribe
+AZURE_OPENAI_CHAT_DEPLOYMENT=<span class="value">gpt-5.4</span>
+AZURE_OPENAI_EXTRACT_DEPLOYMENT=<span class="value">gpt-5.4</span>
+REALTIME_KEY=<span class="value">*****</span>
+TRANSCRIBE_KEY=<span class="value">*****</span>
+CHAT_KEY=<span class="value">*****</span>
+DB_PATH=anmokuchi.db
+UPLOAD_DIR=uploads</code></pre>
+  </section>
+
+  <!-- ===== 10. 既知の課題・今後 ===== -->
+  <section id="s10">
+    <h2>🔧 10. 既知の課題・今後の予定</h2>
+
+    <h3>✅ Phase 1 で解決済みの課題</h3>
+    <table>
+      <tr><th>課題</th><th>原因</th><th>解決方法</th></tr>
+      <tr><td>AI音声が重なって再生される</td><td>音声チャンクを同時に再生していた</td><td>AudioContext の <code>nextAudioTimeRef</code> でキューイング再生</td></tr>
+      <tr><td>AIがこちらの発話途中に割り込む</td><td>VAD の無音判定が短すぎた（200ms）</td><td>2500ms に延長 + 手動（Push-to-talk）モード追加</td></tr>
+      <tr><td>セッション終了後に画面が戻れない</td><td>エラー時のリカバリ画面がなかった</td><td>エラー画面を追加（「会話に戻る」「新しいセッション」ボタン）</td></tr>
+      <tr><td>セッション履歴の時刻がズレる（9時間）</td><td>SQLiteのUTC時刻に"Z"が付かずJSに誤認識された</td><td>formatJST 関数で"Z"を補完してからJST変換</td></tr>
+      <tr><td>「解析・保存」ボタンがスクロールで消える</td><td>スクロール可能エリア内にボタンを配置していた</td><td>スクロールエリア外のヘッダーに固定配置</td></tr>
+      <tr><td>暗黙知の抽出でエラーが出る</td><td>音声専用モデル(gpt-4o-mini-transcribe)をチャット用途に誤用</td><td>CHAT_DEPLOYMENT を別途分離・CHAT_KEY を追加</td></tr>
+      <tr><td>暗黙知が0件抽出される</td><td>json_object フォーマットで配列を要求していた（モデルが空オブジェクトを返す）</td><td>プロンプトを <code>{"items": [...]}</code> 形式に変更</td></tr>
+      <tr><td>カテゴリ未選択だとデータが表示されない</td><td>表示条件に selectedCategory チェックが入っていた</td><td>全件表示に変更・ドロップダウンはフィルタ専用に</td></tr>
+      <tr><td>--reload でサーバーがルートを認識しない</td><td>複数サーバーが同じポートで起動していた</td><td>--reload なしで起動 + PowerShell で古いプロセスを強制終了</td></tr>
+    </table>
+
+    <h3>✅ Phase 2 で解決済みの課題</h3>
+    <table>
+      <tr><th>課題</th><th>原因</th><th>解決方法</th></tr>
+      <tr><td>AIの最初の発話で語句が途切れる</td><td>AudioContext を最初の音声チャンク到着時に遅延初期化していた</td><td>WebSocket <code>onopen</code> で事前初期化し、<code>ctx.resume()</code> も呼び出す</td></tr>
+      <tr><td>「発話を止める」ボタンが途中で消える</td><td><code>botAudioText</code>（文字起こし完了）でボタン表示を制御していたため、テキスト確定後も音声再生中にボタンが消えていた</td><td><code>isBotSpeaking</code> 状態を追加し、<code>AudioBufferSourceNode.onended</code> で正確に管理</td></tr>
+      <tr><td>gpt-5.4-pro で400エラー</td><td>推論モデルは Chat Completions API 非対応（Responses API のみ）</td><td>gpt-5.4（非推論）に切り替え・Chat Completions API で正常動作</td></tr>
+      <tr><td>500エラー時に CORS エラーが出る</td><td>FastAPI の CORS ミドルウェアは未処理例外の500レスポンスにヘッダーを付与しない</td><td>グローバル例外ハンドラ(<code>@app.exception_handler(Exception)</code>)で CORS ヘッダーを手動付与</td></tr>
+      <tr><td>レクチャーモードで <code>onComplete is not a function</code></td><td>LectureMode から VoiceChat への <code>onComplete</code> プロパティが渡されていなかった</td><td><code>onComplete={() =&gt; setSession(null)}</code> を追加</td></tr>
+      <tr><td>レクチャーボットが「はい。了解いたしました。」で始まる</td><td>レクチャー用システムプロンプトに最初のターンルールがなかった</td><td>プロンプトに「承知しました等の確認フレーズを使わない」ルールを追加</td></tr>
+    </table>
+
+    <h3>⚡ 今後の予定（Phase 3 以降）</h3>
+    <ul>
+      <li><strong>EC2 デプロイ：</strong> 複数部署でそれぞれ独立したインスタンスを立て、DBを分離して運用（<a href="#s11">詳細は第11章</a>）</li>
+      <li><strong>テスト・問答モードの強化：</strong> AIが暗黙知をもとにランダム出題・採点・フィードバックを行う機能</li>
+      <li><strong>ScriptProcessorNode の廃止対応：</strong> ブラウザの deprecation 警告 → AudioWorkletNode への移行</li>
+      <li><strong>個人情報・機密情報の検知：</strong> 発話テキストにNGワードが含まれる場合はDB保存をスキップ</li>
+      <li><strong>暗黙知の信頼度スコア：</strong> 複数セッションで同じ知識が抽出された場合に信頼度を高くするロジック</li>
+      <li><strong>マルチユーザー対応：</strong> 現状は認証なし → ログイン機能の追加</li>
+      <li><strong>PostgreSQL 移行（必要に応じて）：</strong> 複数インスタンスでのDB共有が必要になった場合</li>
+    </ul>
+  </section>
+
+  <!-- ===== 11. EC2 デプロイについて ===== -->
+  <section id="s11">
+    <h2>☁️ 11. EC2 デプロイについて</h2>
+
+    <h3>基本構成</h3>
+    <div class="plain-box">
+      現在のシステムは、ローカル PC 上で動作するように設計されていますが、AWS EC2 インスタンス上に同じ構成を展開することで、イントラネット・インターネット経由での利用が可能になります。
+    </div>
+
+    <h3>📦 SQLite のデータ保存場所（EC2）</h3>
+    <ul>
+      <li>SQLite のデータは <code>backend/anmokuchi.db</code> というファイルに保存されます</li>
+      <li>EC2 では <strong>EBS（Elastic Block Store）</strong> にマウントされたディスク上に保存されるため、インスタンスを再起動してもデータは消えません</li>
+      <li>ただし、インスタンスを<strong>削除</strong>すると EBS も削除されます（スナップショット等でバックアップ推奨）</li>
+    </ul>
+
+    <h3>🏢 複数部署への展開（推奨アーキテクチャ）</h3>
+    <div class="plain-box">
+      部署ごとに扱う業務・暗黙知の種類が異なるため、<strong>部署ごとに独立したインスタンスを立てる方法が推奨です。</strong>
+    </div>
+
+    <div class="grid2">
+      <div class="step-card">
+        <div class="step-title">
+          <span class="step-num">A</span> 複数インスタンス（推奨）
+        </div>
+        <ul>
+          <li>部署ごとに EC2 インスタンスを1つずつ立てる</li>
+          <li>各インスタンスが独立した SQLite DB を持つ</li>
+          <li>データが完全に分離されプライバシーが守られる</li>
+          <li>1つのインスタンスが落ちても他に影響しない</li>
+          <li><strong>同じIPアドレスでも、ポートを変えれば複数サービスを公開可能</strong>（例：部署A → :8000/:3000、部署B → :8001/:3001）</li>
+        </ul>
+      </div>
+      <div class="step-card">
+        <div class="step-title">
+          <span class="step-num">B</span> 1インスタンス・業務区分で分離
+        </div>
+        <ul>
+          <li>1つの EC2 インスタンスで複数部署を同居させる</li>
+          <li>業務区分（business_categories）でデータを論理分離</li>
+          <li>コストは安いが、データが同一DBに混在する</li>
+          <li>将来的に大量データになったときのパフォーマンス懸念</li>
+          <li>部署間のデータ分離を UI だけに依存する点がリスク</li>
+        </ul>
+      </div>
+    </div>
+
+    <h3>🌐 同一IPで複数ポートを使う例</h3>
+    <div class="arch-box" style="font-size:0.82rem; line-height:1.9;">
+<span class="cm"># IPアドレス: 136.0.0.5 の場合</span><br><br>
+<span class="hl">部署A（口座開設業務）</span><br>
+  Backend: 136.0.0.5<span class="ar">:8000</span>  → FastAPI<br>
+  Frontend: 136.0.0.5<span class="ar">:3000</span>  → Next.js<br>
+  DB: /app_dept_a/backend/anmokuchi.db<br><br>
+<span class="hl">部署B（不正利用調査業務）</span><br>
+  Backend: 136.0.0.5<span class="ar">:8001</span>  → FastAPI<br>
+  Frontend: 136.0.0.5<span class="ar">:3001</span>  → Next.js<br>
+  DB: /app_dept_b/backend/anmokuchi.db<br><br>
+<span class="cm">※ EC2 のセキュリティグループで各ポートのインバウンドルールを開放すること</span>
+    </div>
+
+    <div class="warning">
+      ⚠️ <strong>.env ファイルの取り扱い：</strong> EC2 に設置する際も <code>.env</code> ファイルにはAzure OpenAI の APIキーが含まれます。gitignore 済みですが、デプロイ時は SCP 等で直接転送し、GitHub には絶対にアップロードしないでください。
+    </div>
+  </section>
+
+  <!-- ===== 12. 別端末セットアップ手順 ===== -->
+  <section id="s12">
+    <h2>🖥️ 12. 別端末でのセットアップ手順</h2>
+
+    <div class="info">
+      📌 この手順書は、開発機とは別のPCで同じシステムを動かすためのものです。インターネットに接続できる端末であれば、OS（Windows/Mac/Linux）を問わず動作します。
+    </div>
+
+    <h3>⬛ 事前に用意するもの</h3>
+    <ul>
+      <li>インターネット接続（Azure OpenAI への通信に必要）</li>
+      <li><strong>.env ファイル</strong>（開発機の <code>backend/.env</code> をコピー。APIキーが書かれた機密ファイルです）</li>
+      <li>マイク（音声対話機能を使う場合）</li>
+    </ul>
+    <div class="danger">
+      🔐 <strong>.env ファイルの取り扱いに注意してください。</strong>Azure OpenAI の APIキーが記載されています。メールやチャットで送らず、USBメモリなど物理的な方法か、パスワード付きの安全な手段で渡してください。GitHubにはアップロードしないこと（.gitignore で除外済みですが、誤操作に注意）。
+    </div>
+
+    <h3>🔵 Step 1: Python のインストール</h3>
+    <div class="step-card">
+      <div class="step-title"><span class="step-num">1</span> Python 3.11 以上をインストール</div>
+      <p>Python はバックエンドサーバーを動かすために必要です。</p>
+      <ol>
+        <li><code>https://www.python.org/downloads/</code> にアクセス</li>
+        <li>「Download Python 3.x.x」ボタンをクリックしてダウンロード</li>
+        <li>インストーラーを実行。<strong>必ず「Add Python to PATH」にチェックを入れる</strong></li>
+        <li>インストール完了後、ターミナル（PowerShell）を開いて確認：</li>
+      </ol>
+      <pre><code>python --version
+<span class="comment"># 例: Python 3.13.1 と表示されればOK</span></code></pre>
+      <div class="info">💡 Windowsの場合、スタートメニューで「PowerShell」または「コマンドプロンプト」を検索して開いてください。</div>
+    </div>
+
+    <h3>🟢 Step 2: Node.js のインストール</h3>
+    <div class="step-card">
+      <div class="step-title"><span class="step-num">2</span> Node.js 20 以上をインストール</div>
+      <p>Node.js はフロントエンド（画面）を動かすために必要です。</p>
+      <ol>
+        <li><code>https://nodejs.org/</code> にアクセス</li>
+        <li>「LTS（推奨版）」をクリックしてダウンロード（20.x 以上）</li>
+        <li>インストーラーを実行（すべてデフォルト設定でOK）</li>
+        <li>ターミナルで確認：</li>
+      </ol>
+      <pre><code>node --version
+<span class="comment"># 例: v22.1.0 と表示されればOK</span>
+npm --version
+<span class="comment"># 例: 10.7.0 と表示されればOK</span></code></pre>
+    </div>
+
+    <h3>🟡 Step 3: Git のインストール（未インストールの場合）</h3>
+    <div class="step-card">
+      <div class="step-title"><span class="step-num">3</span> Git をインストール（必要な場合のみ）</div>
+      <p>すでに git コマンドが使える場合はスキップしてOKです。</p>
+      <ol>
+        <li><code>https://git-scm.com/download/win</code> からダウンロード</li>
+        <li>インストーラーを実行（すべてデフォルト設定でOK）</li>
+        <li>確認：</li>
+      </ol>
+      <pre><code>git --version
+<span class="comment"># 例: git version 2.44.0 と表示されればOK</span></code></pre>
+    </div>
+
+    <h3>📥 Step 4: リポジトリのクローン</h3>
+    <div class="step-card">
+      <div class="step-title"><span class="step-num">4</span> GitHub からコードを取得する</div>
+      <p>ターミナルで任意のフォルダに移動し、以下のコマンドを実行します。</p>
+      <pre><code><span class="comment"># 例: Cドライブ直下に展開する場合</span>
+cd C:\
+git clone https://github.com/YU-creator-web/amc_app.git
+cd amc_app</code></pre>
+      <p>コマンド完了後、<code>amc_app</code> フォルダが作成されます。</p>
+    </div>
+
+    <h3>🔑 Step 5: .env ファイルの配置</h3>
+    <div class="step-card">
+      <div class="step-title"><span class="step-num">5</span> .env ファイルを backend フォルダに置く</div>
+      <p>開発機から受け取った <code>.env</code> ファイルを、<code>amc_app/backend/</code> フォルダ内にコピーします。</p>
+      <div class="danger">⚠️ ファイル名は必ず <code>.env</code>（ドットenv）です。<code>.env.txt</code> など拡張子が付かないように注意してください。</div>
+      <p>配置後、ファイルの内容を確認：</p>
+      <pre><code>type C:\amc_app\backend\.env
+<span class="comment"># または Get-Content C:\amc_app\backend\.env</span></code></pre>
+      <p>以下のような内容が表示されればOKです（キーの値は伏せています）：</p>
+      <pre><code>AZURE_OPENAI_ENDPOINT=https://&lt;リソース名&gt;.cognitiveservices.azure.com
+AZURE_OPENAI_API_VERSION=2025-04-01-preview
+AZURE_OPENAI_REALTIME_DEPLOYMENT=gpt-realtime-1.5
+AZURE_OPENAI_TRANSCRIBE_DEPLOYMENT=gpt-4o-mini-transcribe
+AZURE_OPENAI_CHAT_DEPLOYMENT=<span class="value">gpt-5.4</span>
+AZURE_OPENAI_EXTRACT_DEPLOYMENT=<span class="value">gpt-5.4</span>
+REALTIME_KEY=<span class="value">*****</span>
+TRANSCRIBE_KEY=<span class="value">*****</span>
+CHAT_KEY=<span class="value">*****</span>
+DB_PATH=anmokuchi.db
+UPLOAD_DIR=uploads</code></pre>
+    </div>
+
+    <h3>🐍 Step 6: Python 仮想環境の作成とパッケージインストール</h3>
+    <div class="step-card">
+      <div class="step-title"><span class="step-num">6</span> Python の依存パッケージをインストール</div>
+      <div class="plain-box">「仮想環境」とは、このプロジェクト専用の Python 環境のことです。他のプロジェクトと干渉しないように分離して管理します。</div>
+      <pre><code><span class="comment"># backend フォルダへ移動</span>
+cd C:\amc_app\backend
+
+<span class="comment"># 仮想環境を作成（venv というフォルダが作られる）</span>
+python -m venv venv
+
+<span class="comment"># 仮想環境を有効にする（Windows PowerShell の場合）</span>
+venv\Scripts\Activate.ps1
+
+<span class="comment"># ※ 実行ポリシーエラーが出た場合は以下を先に実行</span>
+Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+
+<span class="comment"># パッケージをインストール（数分かかります）</span>
+pip install -r requirements.txt</code></pre>
+      <p>インストール完了後、以下で確認できます：</p>
+      <pre><code>pip list
+<span class="comment"># fastapi, uvicorn, openai などが表示されればOK</span></code></pre>
+    </div>
+
+    <h3>📦 Step 7: フロントエンドのパッケージインストール</h3>
+    <div class="step-card">
+      <div class="step-title"><span class="step-num">7</span> Node.js の依存パッケージをインストール</div>
+      <pre><code><span class="comment"># frontend フォルダへ移動</span>
+cd C:\amc_app\frontend
+
+<span class="comment"># パッケージをインストール（数分かかります）</span>
+npm install</code></pre>
+      <p>完了後、<code>node_modules</code> フォルダが作成されます。</p>
+    </div>
+
+    <h3>🚀 Step 8: サーバーの起動</h3>
+    <div class="step-card">
+      <div class="step-title"><span class="step-num">8</span> バックエンドとフロントエンドを起動する</div>
+      <p><strong>ターミナルを2つ</strong>開いて、それぞれで以下を実行します。</p>
+
+      <h4>ターミナル① : バックエンド（Python）</h4>
+      <pre><code>cd C:\amc_app\backend
+venv\Scripts\Activate.ps1
+python -m uvicorn main:app --host 0.0.0.0 --port 8000</code></pre>
+      <p>以下のようなメッセージが表示されればバックエンド起動成功です：</p>
+      <pre><code>INFO:     Started server process [XXXX]
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8000</code></pre>
+
+      <h4>ターミナル② : フロントエンド（Next.js）</h4>
+      <pre><code>cd C:\amc_app\frontend
+npm run dev</code></pre>
+      <p>以下のようなメッセージが表示されればフロントエンド起動成功です：</p>
+      <pre><code>▲ Next.js 16.2.5
+- Local: http://localhost:3000</code></pre>
+
+      <div class="success">
+        ✅ 両方のサーバーが起動したら、ブラウザで <strong>http://localhost:3000</strong> を開いてください。システムが表示されれば完了です！
+      </div>
+    </div>
+
+    <h3>🔍 Step 9: 動作確認</h3>
+    <div class="step-card">
+      <div class="step-title"><span class="step-num">9</span> 正常に動いているか確認する</div>
+      <ol>
+        <li>ブラウザで <code>http://localhost:3000</code> を開く → 「Demo App」画面が表示される</li>
+        <li><code>http://localhost:8000/health</code> を開く → <code>{"status":"ok"}</code> と表示される</li>
+        <li>「インタビュー」→ 業務区分が「口座開設」と表示される → バックエンドとDBが正常</li>
+        <li>右上の歯車アイコン → 設定モーダルが開く → 業務区分の追加・削除ができる</li>
+        <li>マイクONボタンを押して音声接続できる → Azure OpenAI との接続が正常</li>
+      </ol>
+      <div class="warning">
+        ⚠️ マイクの使用許可をブラウザが求めた場合は「許可」を選んでください。また、マイクボタンがグレーアウトして押せない場合は、バックエンドが起動していない可能性があります。
+      </div>
+    </div>
+
+    <h3>🔁 2回目以降の起動方法（毎回の手順）</h3>
+    <div class="step-card">
+      <div class="step-title"><span class="step-num">★</span> 毎回の起動はこれだけ</div>
+      <p>2回目以降は Step 1〜7 は不要です。毎回この2つだけ実行してください。</p>
+      <h4>ターミナル① : バックエンド</h4>
+      <pre><code>cd C:\amc_app\backend
+venv\Scripts\Activate.ps1
+python -m uvicorn main:app --host 0.0.0.0 --port 8000</code></pre>
+      <h4>ターミナル② : フロントエンド</h4>
+      <pre><code>cd C:\amc_app\frontend
+npm run dev</code></pre>
+    </div>
+  </section>
+
+  <!-- ===== 13. トラブルシューティング ===== -->
+  <section id="s13">
+    <h2>🩺 13. トラブルシューティング</h2>
+    <table>
+      <tr><th>症状</th><th>考えられる原因</th><th>対処法</th></tr>
+      <tr>
+        <td>バックエンドが起動しない</td>
+        <td>.env ファイルがない、または設定キーが不足している</td>
+        <td><code>backend/.env</code> を確認。<code>Extra inputs are not permitted</code> エラーの場合は.envに不要なキーがある</td>
+      </tr>
+      <tr>
+        <td><code>Set-ExecutionPolicy</code> が必要と言われる</td>
+        <td>Windows PowerShell のスクリプト実行ポリシー制限</td>
+        <td><code>Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser</code> を実行してから再試行</td>
+      </tr>
+      <tr>
+        <td>ブラウザに「接続できません」と表示される</td>
+        <td>フロントエンドが起動していない、またはポート3000が使用中</td>
+        <td><code>npm run dev</code> が実行中か確認。ポートが占有されている場合は <code>npm run dev -- --port 3001</code> で別ポートを指定</td>
+      </tr>
+      <tr>
+        <td>マイクボタンがグレーアウト（押せない）</td>
+        <td>バックエンドが起動していない、または WebSocket 接続に失敗</td>
+        <td><code>http://localhost:8000/health</code> を確認。バックエンドを再起動してから画面をリロード</td>
+      </tr>
+      <tr>
+        <td>音声接続はできるが AI が返答しない</td>
+        <td>Azure OpenAI のエンドポイントや APIキーが誤っている</td>
+        <td>.env の <code>AZURE_OPENAI_ENDPOINT</code> と <code>REALTIME_KEY</code> を確認。バックエンドのコンソールにエラーが出ているか確認</td>
+      </tr>
+      <tr>
+        <td>AIの最初の発話で語句が途切れる</td>
+        <td>AudioContext が再生時に初期化されていなかった（古いバージョンの問題）</td>
+        <td>最新コードでは WebSocket 接続時に事前初期化済み。バックエンド・フロントエンドを最新化して確認</td>
+      </tr>
+      <tr>
+        <td>「発話を止める」ボタンが消える</td>
+        <td>古いバージョンの VoiceChat.tsx を使用している</td>
+        <td>最新コードでは <code>isBotSpeaking</code> 状態で管理済み。フロントエンドを最新化して確認</td>
+      </tr>
+      <tr>
+        <td>音声が重なって聞こえる</td>
+        <td>ブラウザのページを複数タブで開いている、または VoiceChat の音声キュー管理に問題</td>
+        <td>タブを1つだけにする。それでも発生する場合はページをリロード</td>
+      </tr>
+      <tr>
+        <td>インタビューで CORS エラーや 500 エラー</td>
+        <td>バックエンドのグローバル例外ハンドラが未設定</td>
+        <td>最新コードでは <code>@app.exception_handler(Exception)</code> で CORS ヘッダーを付与済み。バックエンドを最新化して再起動</td>
+      </tr>
+      <tr>
+        <td>「解析・保存」が 0件</td>
+        <td>対話内容が少なすぎる、または AI が知識を検出できなかった</td>
+        <td>より具体的な業務判断について話した後で再試行。会話ログが「セッション履歴」に残っていれば再抽出も可能</td>
+      </tr>
+      <tr>
+        <td>インタビューでモデルエラー（400）</td>
+        <td>EXTRACT_DEPLOYMENT に推論モデル(gpt-5.4-pro等)が設定されている</td>
+        <td>.env の <code>AZURE_OPENAI_EXTRACT_DEPLOYMENT=gpt-5.4</code> に修正（非推論モデルを使用）</td>
+      </tr>
+      <tr>
+        <td>セッション履歴の時刻がズレる</td>
+        <td>SQLite の UTC タイムスタンプが正しく変換されていない</td>
+        <td>ReviewMode.tsx の <code>formatJST</code> 関数内に「Z」補完の処理があるか確認</td>
+      </tr>
+      <tr>
+        <td><code>npm install</code> でエラーが出る</td>
+        <td>Node.js のバージョンが古い（18未満）</td>
+        <td><code>node --version</code> で確認。古い場合は Node.js を最新の LTS に更新する</td>
+      </tr>
+      <tr>
+        <td>pip install でエラーが出る</td>
+        <td>仮想環境が有効になっていない、または Python バージョンが古い</td>
+        <td><code>venv\Scripts\Activate.ps1</code> を実行してから再試行。プロンプトの先頭に <code>(venv)</code> が表示されていれば有効</td>
+      </tr>
+    </table>
+
+    <div class="info" style="margin-top:16px;">
+      💡 それでも解決しない場合は、バックエンドのコンソール出力（エラーログ）をコピーして開発者に共有してください。<code>http://localhost:8000/docs</code> で API の直接テストもできます。
+    </div>
+  </section>
+
+</div>
+
+  <!-- ===== 14. EC2 デプロイ手順（実施手順詳細） ===== -->
+  <section id="s14">
+    <h2>🚀 14. EC2 デプロイ手順（実施手順詳細）</h2>
+
+    <div class="info">
+      📌 この手順は実際に動作確認済みの手順です。会社環境の EC2 にデプロイする際はこの手順に沿って進めてください。
+    </div>
+
+    <div class="warning">
+      ⚠️ <strong>.env ファイルの取り扱い：</strong> APIキーが含まれます。SCP で直接転送し、チャットやメールで送らないでください。
+    </div>
+
+    <h3>📋 事前準備</h3>
+    <div class="plain-box">
+      <strong>必要なもの：</strong><br>
+      ・AWS アカウント（EC2 操作権限）<br>
+      ・.pem キーペアファイル（インスタンス作成時にダウンロード）<br>
+      ・<code>backend/.env</code> ファイル（APIキー入り）<br>
+      ・インターネット接続
+    </div>
+
+    <h3>① EC2 インスタンスの作成</h3>
+    <div class="step-card">
+      <div class="step-title"><span class="step-num">1</span> AWS コンソールでインスタンスを起動</div>
+      <table>
+        <tr><th>設定項目</th><th>値</th></tr>
+        <tr><td>AMI</td><td>Ubuntu Server 26.04 LTS (HVM) — 無料枠対象</td></tr>
+        <tr><td>インスタンスタイプ</td><td>t3.micro（無料枠対象・1GB RAM）</td></tr>
+        <tr><td>キーペア</td><td>新規作成（.pem 形式）→ ダウンロードして保管</td></tr>
+        <tr><td>セキュリティグループ</td><td>SSH (22)・HTTP (80)・HTTPS (443) を許可</td></tr>
+        <tr><td>ストレージ</td><td>8GB（デフォルト）</td></tr>
+      </table>
+      <div class="warning">⚠️ .pem ファイルは作成後に再ダウンロードできません。必ず安全な場所に保管してください。</div>
+    </div>
+
+    <h3>② SSH 接続（Windows PowerShell から）</h3>
+    <div class="step-card">
+      <div class="step-title"><span class="step-num">2</span> キーファイルの権限修正 → SSH 接続</div>
+      <p>Windows では .pem ファイルのアクセス権限が広すぎると SSH が拒否されます。最初の接続前に以下を実行：</p>
+      <pre><code><span class="comment"># キーファイルの権限を自分だけに絞る（初回のみ）</span>
+icacls "$env:USERPROFILE\Downloads\your-key.pem" /inheritance:r /grant:r "${env:USERNAME}:R"
+
+<span class="comment"># SSH 接続</span>
+ssh -i "$env:USERPROFILE\Downloads\your-key.pem" ubuntu@&lt;EC2のパブリックIP&gt;</code></pre>
+      <p>「接続を信頼しますか？」と聞かれたら <code>yes</code> と入力。</p>
+    </div>
+
+    <h3>③ サーバー環境のセットアップ</h3>
+    <div class="step-card">
+      <div class="step-title"><span class="step-num">3</span> パッケージの更新とインストール</div>
+      <pre><code><span class="comment"># システムを最新化（数分かかる）</span>
+sudo apt update && sudo apt upgrade -y
+
+<span class="comment"># 必要なツールを一括インストール</span>
+sudo apt install -y python3 python3-pip python3-venv nodejs npm nginx git</code></pre>
+    </div>
+
+    <h3>④ アプリのデプロイ</h3>
+    <div class="step-card">
+      <div class="step-title"><span class="step-num">4</span> リポジトリのクローンとバックエンドセットアップ</div>
+      <pre><code><span class="comment"># GitHub からクローン</span>
+git clone https://github.com/YU-creator-web/amc_app.git && cd amc_app
+
+<span class="comment"># バックエンドの仮想環境作成とパッケージインストール</span>
+cd backend && python3 -m venv venv && source venv/bin/activate && pip install -r requirements.txt</code></pre>
+    </div>
+
+    <div class="step-card">
+      <div class="step-title"><span class="step-num">5</span> .env ファイルの転送（ローカルの PowerShell から実行）</div>
+      <p>EC2 の SSH セッションはそのままにして、<strong>別の PowerShell ウィンドウ</strong>で実行：</p>
+      <pre><code>scp -i "$env:USERPROFILE\Downloads\your-key.pem" `
+    "C:\path\to\amc_app\backend\.env" `
+    ubuntu@&lt;EC2のパブリックIP&gt;:~/amc_app/backend/.env</code></pre>
+    </div>
+
+    <div class="step-card">
+      <div class="step-title"><span class="step-num">6</span> フロントエンドのビルド</div>
+      <div class="warning">
+        ⚠️ <strong>メモリ不足対策が必要：</strong> t3.micro は RAM 1GB のため、Next.js のビルド中にメモリ不足でプロセスが強制終了（Killed）されます。スワップを追加してからビルドしてください。
+      </div>
+      <pre><code>cd ~/amc_app/frontend
+
+<span class="comment"># 1. 環境変数を設定（EC2 のパブリックIP を指定）</span>
+echo "NEXT_PUBLIC_WS_URL=wss://&lt;EC2のパブリックIP&gt;" > .env.local
+echo "NEXT_PUBLIC_API_URL=https://&lt;EC2のパブリックIP&gt;" >> .env.local
+
+<span class="comment"># 2. スワップ領域を追加（メモリ不足対策 / 初回のみ）</span>
+sudo fallocate -l 1G /swapfile && sudo chmod 600 /swapfile && sudo mkswap /swapfile && sudo swapon /swapfile
+
+<span class="comment"># 3. ビルド実行（2〜3分かかる）</span>
+npm install && npm run build</code></pre>
+      <div class="info">
+        💡 <code>NEXT_PUBLIC_WS_URL</code> と <code>NEXT_PUBLIC_API_URL</code> はビルド時に静的に埋め込まれます。IP が変わった場合はこのファイルを更新して再ビルドが必要です。
+      </div>
+    </div>
+
+    <h3>⑤ nginx の設定（リバースプロキシ）</h3>
+    <div class="step-card">
+      <div class="step-title"><span class="step-num">7</span> nginx でフロントとバックを振り分け</div>
+      <div class="arch-box" style="font-size:0.82rem; line-height:1.8;">
+<span class="hl">ブラウザ</span><br>
+  <span class="ar">→ https://&lt;IP&gt;/ws/*   →</span> nginx <span class="ar">→</span> backend:8000 (WebSocket)<br>
+  <span class="ar">→ https://&lt;IP&gt;/api/*  →</span> nginx <span class="ar">→</span> backend:8000 (REST API)<br>
+  <span class="ar">→ https://&lt;IP&gt;/       →</span> nginx <span class="ar">→</span> frontend:3000
+      </div>
+      <pre><code>sudo tee /etc/nginx/sites-available/demo-app &lt;&lt; 'EOF'
+server {
+    listen 80;
+    return 301 https://$host$request_uri;
+}
+
+server {
+    listen 443 ssl;
+    ssl_certificate /etc/ssl/certs/demo-app.crt;
+    ssl_certificate_key /etc/ssl/private/demo-app.key;
+
+    location /ws/ {
+        proxy_pass http://127.0.0.1:8000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+    }
+
+    location /api/ {
+        proxy_pass http://127.0.0.1:8000;
+        proxy_set_header Host $host;
+    }
+
+    location / {
+        proxy_pass http://127.0.0.1:3000;
+        proxy_set_header Host $host;
+    }
+}
+EOF
+sudo ln -s /etc/nginx/sites-available/demo-app /etc/nginx/sites-enabled/
+sudo rm -f /etc/nginx/sites-enabled/default
+sudo nginx -t && sudo systemctl reload nginx</code></pre>
+    </div>
+
+    <h3>⑥ HTTPS（自己署名証明書）</h3>
+    <div class="step-card">
+      <div class="step-title"><span class="step-num">8</span> 自己署名証明書の作成</div>
+      <p>ブラウザがマイクへのアクセスを許可するには <strong>HTTPS が必須</strong>です（<code>http://</code> ではマイク API がブロックされます）。ドメインがない場合は自己署名証明書を使います。</p>
+      <pre><code>sudo openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+  -keyout /etc/ssl/private/demo-app.key \
+  -out /etc/ssl/certs/demo-app.crt \
+  -subj "/CN=&lt;EC2のパブリックIP&gt;"
+
+sudo systemctl reload nginx</code></pre>
+      <div class="info">💡 ブラウザで「保護されていない接続」の警告が表示されます。「詳細設定」→「このサイトにアクセスする」で進んでください。マイクは正常に使えます。</div>
+    </div>
+
+    <h3>⑦ systemd サービス登録（自動起動）</h3>
+    <div class="step-card">
+      <div class="step-title"><span class="step-num">9</span> バックエンドとフロントエンドをサービスとして登録</div>
+      <pre><code><span class="comment"># バックエンドサービス</span>
+sudo tee /etc/systemd/system/demo-backend.service &lt;&lt; 'EOF'
+[Unit]
+Description=Demo App Backend
+After=network.target
+
+[Service]
+User=ubuntu
+WorkingDirectory=/home/ubuntu/amc_app/backend
+ExecStart=/home/ubuntu/amc_app/backend/venv/bin/uvicorn main:app --host 127.0.0.1 --port 8000
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+<span class="comment"># フロントエンドサービス</span>
+sudo tee /etc/systemd/system/demo-frontend.service &lt;&lt; 'EOF'
+[Unit]
+Description=Demo App Frontend
+After=network.target
+
+[Service]
+User=ubuntu
+WorkingDirectory=/home/ubuntu/amc_app/frontend
+ExecStart=/usr/bin/npm start
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+<span class="comment"># サービスの有効化と起動</span>
+sudo systemctl daemon-reload
+sudo systemctl enable demo-backend demo-frontend
+sudo systemctl start demo-backend demo-frontend</code></pre>
+      <div class="success">✅ これでサーバーを再起動しても両サービスが自動で立ち上がります。</div>
+    </div>
+
+    <h3>⑧ 動作確認</h3>
+    <div class="step-card">
+      <div class="step-title"><span class="step-num">10</span> サービス状態の確認とアクセス</div>
+      <pre><code><span class="comment"># 両サービスの状態確認</span>
+sudo systemctl status demo-backend demo-frontend --no-pager
+
+<span class="comment"># ログ確認（エラー調査時）</span>
+sudo journalctl -u demo-backend -n 50 --no-pager
+sudo journalctl -u demo-frontend -n 50 --no-pager</code></pre>
+      <p>ブラウザで <code>https://&lt;EC2のパブリックIP&gt;</code> にアクセスして動作確認。</p>
+    </div>
+
+    <h3>⚠️ ハマりポイントと対処法</h3>
+    <table>
+      <tr><th>問題</th><th>原因</th><th>対処法</th></tr>
+      <tr>
+        <td>SSH 接続で <code>Permission denied (publickey)</code></td>
+        <td>Windows での .pem ファイルのアクセス権限が広すぎる</td>
+        <td><code>icacls</code> コマンドで権限を自分だけに絞る（手順②参照）</td>
+      </tr>
+      <tr>
+        <td>npm run build が途中で <code>Killed</code> になる</td>
+        <td>t3.micro の RAM 1GB では Next.js ビルドがメモリ不足</td>
+        <td>スワップ 1GB を追加してから再ビルド（手順⑥参照）</td>
+      </tr>
+      <tr>
+        <td>設定モーダルで <code>Failed to fetch</code></td>
+        <td><code>NEXT_PUBLIC_API_URL</code> が設定されておらず <code>localhost:8000</code> に接続しようとしている</td>
+        <td><code>.env.local</code> に <code>NEXT_PUBLIC_API_URL=https://&lt;IP&gt;</code> を追加して再ビルド</td>
+      </tr>
+      <tr>
+        <td>https にしたら <code>Failed to fetch</code> が再発</td>
+        <td>Mixed Content エラー（HTTPS ページから HTTP API は呼べない）</td>
+        <td><code>NEXT_PUBLIC_API_URL</code> を <code>http://</code> → <code>https://</code> に変更、<code>NEXT_PUBLIC_WS_URL</code> を <code>ws://</code> → <code>wss://</code> に変更して再ビルド</td>
+      </tr>
+      <tr>
+        <td>マイク・スペースキーが反応しない</td>
+        <td>ブラウザは <code>http://</code> でのマイクアクセスをブロックする</td>
+        <td>自己署名証明書で HTTPS を設定する（手順⑥参照）</td>
+      </tr>
+      <tr>
+        <td>マニュアルをアップロードしてもボットが内容を認識しない</td>
+        <td><code>pypdf</code> が requirements.txt に含まれておらず、PDF テキスト抽出が無音で失敗する</td>
+        <td><code>pip install pypdf</code> で手動インストール。既存マニュアルは DB の <code>content_text</code> を手動で再生成する必要あり（requirements.txt への追記も必須）</td>
+      </tr>
+    </table>
+
+    <h3>🔄 コードを更新した場合の再デプロイ手順</h3>
+    <div class="step-card">
+      <div class="step-title"><span class="step-num">★</span> git pull してサービス再起動</div>
+      <pre><code>cd ~/amc_app && git pull
+
+<span class="comment"># バックエンドの変更があった場合</span>
+cd backend && source venv/bin/activate && pip install -r requirements.txt
+sudo systemctl restart demo-backend
+
+<span class="comment"># フロントエンドの変更があった場合（リビルドが必要）</span>
+cd ~/amc_app/frontend && npm run build
+sudo systemctl restart demo-frontend</code></pre>
+    </div>
+  </section>
+
+  <!-- ===== 15. Teams Bot vs 独自UI 音声対話比較 ===== -->
+  <section id="s15">
+    <h2>💬 15. Teams Bot vs 独自UI 音声対話比較</h2>
+
+    <div class="plain-box">
+      このアプリは当初 Microsoft Teams アプリとして開発することも検討されましたが、独自UIを採用しました。<br>
+      以下は音声対話UXの観点での比較です。
+    </div>
+
+    <h3>📊 音声対話 UX 比較表</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>項目</th>
+          <th>今のアプリ（独自UI）</th>
+          <th>Teams + Azure Bot Service</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>音声入力の開始方法</strong></td>
+          <td>スペースキー長押しで即録音開始</td>
+          <td>「録音して」などテキスト送信、またはAdaptive Cardのボタン操作が必要</td>
+        </tr>
+        <tr>
+          <td><strong>録音中のフィードバック</strong></td>
+          <td>波形アニメーション・カラーで録音状態を視覚的に表示</td>
+          <td>ほぼなし（Teamsのチャット画面上に表示できない）</td>
+        </tr>
+        <tr>
+          <td><strong>STT（音声→テキスト）</strong></td>
+          <td>Azure STT → 即座にテキスト化・画面に表示</td>
+          <td>Teams Calling Bot SDK経由が必要（実装が全く別物・非常に複雑）</td>
+        </tr>
+        <tr>
+          <td><strong>ボットの返答表示</strong></td>
+          <td>ストリーミングで文字が流れるようにリアルタイム表示</td>
+          <td>一括送信（「…」の後にドンと出る）</td>
+        </tr>
+        <tr>
+          <td><strong>ボットの読み上げ（TTS）</strong></td>
+          <td>Azure TTSで自動読み上げ・音量調整も可能</td>
+          <td>Teams標準では非対応・別途実装が必要</td>
+        </tr>
+        <tr>
+          <td><strong>会話の継続性</strong></td>
+          <td>スペースキーを押すだけで即次の発話へ移行できる</td>
+          <td>毎回テキスト入力またはボタン操作が必要</td>
+        </tr>
+        <tr>
+          <td><strong>会話履歴の表示</strong></td>
+          <td>専用UIでボット・ユーザーを視覚的に分けてデザイン</td>
+          <td>Teamsの標準チャットバブル（カスタマイズに限界あり）</td>
+        </tr>
+        <tr>
+          <td><strong>マニュアル参照の表示</strong></td>
+          <td>専用セクションに整理されて表示</td>
+          <td>Adaptive Cardで組むが表示の自由度・制約が多い</td>
+        </tr>
+        <tr>
+          <td><strong>モード切替</strong></td>
+          <td>ヘッダーのタブで即座に切替可能</td>
+          <td>コマンド入力またはカード操作が必要</td>
+        </tr>
+        <tr>
+          <td><strong>レスポンス速度</strong></td>
+          <td>WebSocketで直接通信・低遅延</td>
+          <td>Bot Service経由で通信経路が増え遅延が発生しやすい</td>
+        </tr>
+        <tr>
+          <td><strong>実装難易度</strong></td>
+          <td>今の構成で完結</td>
+          <td>Calling Bot SDK・Microsoft Graph API・別途インフラが必要で非常に複雑</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h3 style="margin-top:24px;">🏁 独自UIを選んだ理由</h3>
+    <div class="plain-box">
+      <strong>Teams Bot が強い場面：</strong>テキストQ&amp;A・通知・ボタン操作など、チャットベースの業務フロー自動化<br><br>
+      <strong>独自UIが必要な場面：</strong>音声での自然な連続対話・リアルタイムフィードバック・カスタムUI要件<br><br>
+      このアプリのコアUXである「スペースキー → 録音 → TTS読み上げ → 次の質問」というリズムは、Teams Bot では再現が困難です。<br>
+      会社のセキュリティ審査の観点とあわせて、独自UIの採用が適切な判断でした。
+    </div>
+  </section>
+
+  <!-- ===== 16. 会社AWS環境へのデプロイ時の注意点 ===== -->
+  <section id="s16">
+    <h2>🏢 16. 会社AWS環境へのデプロイ時の注意点</h2>
+
+    <div class="plain-box">
+      個人AWSでのフィジビリ検証（セクション14）は完了しました。会社専用のAWS環境にデプロイする際は、社内インフラポリシーにより追加の申請・変更が必要になる可能性があります。
+    </div>
+
+    <h3>🔴 ほぼ確実に申請が必要なもの</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>項目</th>
+          <th>個人環境での対応</th>
+          <th>会社環境で必要なこと</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>セキュリティグループ（ポート開放）</strong></td>
+          <td>コンソールから自分で80・443・22番を開放</td>
+          <td>インフラチームへの申請が必要なことが多い。「HTTPS（443）とWebSocket通信あり」と明示して依頼する</td>
+        </tr>
+        <tr>
+          <td><strong>SSL証明書</strong></td>
+          <td>自己署名証明書（openssl自作）→ブラウザ警告あり</td>
+          <td>自己署名は企業環境では基本NG。社内CA・AWS ACM・Let's Encrypt のいずれかへの切り替えが必要</td>
+        </tr>
+        <tr>
+          <td><strong>ドメイン名</strong></td>
+          <td>EC2のIPアドレス直打ち（例: https://54.x.x.x）</td>
+          <td>社内DNSへのドメイン登録申請が必要。IPアドレス直打ちは許可されないことが多い</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h3 style="margin-top:24px;">🟡 環境によっては申請・変更が必要なもの</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>項目</th>
+          <th>個人環境での対応</th>
+          <th>会社環境での想定</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>リバースプロキシ（nginx）</strong></td>
+          <td>EC2内にnginxを自分でインストール・設定</td>
+          <td>ALB（AWS Application Load Balancer）が既存の場合、nginxは不要になりALB側のターゲットグループ設定に変わる。WebSocket対応も申請が必要</td>
+        </tr>
+        <tr>
+          <td><strong>APIキーの管理（.envファイル）</strong></td>
+          <td>backendフォルダに.envファイルを直接配置</td>
+          <td>AWS Secrets Manager や Parameter Store への移行を求められる可能性がある。セキュリティポリシー次第</td>
+        </tr>
+        <tr>
+          <td><strong>WebSocket通信の許可</strong></td>
+          <td>nginxのUpgrade/Connectionヘッダーで対応済み</td>
+          <td>ALBやWAF（Web Application Firewall）でWebSocketが明示的に許可されていない場合があり、設定変更申請が必要</td>
+        </tr>
+        <tr>
+          <td><strong>マイクアクセス（HTTPS要件）</strong></td>
+          <td>自己署名証明書でHTTPS化して対応</td>
+          <td>適切な証明書でHTTPS化されていれば問題なし。HTTP環境では引き続きマイクが使えないため必ずHTTPS必須</td>
+        </tr>
+        <tr>
+          <td><strong>アクセス制限</strong></td>
+          <td>誰でもアクセス可能</td>
+          <td>社内ネットワーク・VPN経由のみに制限される可能性がある（セキュリティグループのインバウンドを社内IPに限定）</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h3 style="margin-top:24px;">🔄 個人環境から会社環境へのコンポーネント対応表</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>個人環境（フィジビリ）</th>
+          <th>会社環境での代替</th>
+          <th>アプリコードの変更</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>nginx（SSL終端・振り分け）</td>
+          <td>ALB + ACM（自動証明書更新）</td>
+          <td>不要（アプリはlocalhost:8000/3000のまま）</td>
+        </tr>
+        <tr>
+          <td>自己署名証明書（openssl）</td>
+          <td>社内CA または ACM</td>
+          <td>不要</td>
+        </tr>
+        <tr>
+          <td>IPアドレス直打ち</td>
+          <td>社内DNS登録ドメイン</td>
+          <td><code>.env.local</code> の <code>NEXT_PUBLIC_API_URL</code> と <code>NEXT_PUBLIC_WS_URL</code> をドメインに変更してリビルド必要</td>
+        </tr>
+        <tr>
+          <td>.envファイル</td>
+          <td>AWS Secrets Manager（要確認）</td>
+          <td>必要になる場合あり（backendのsettings読み込み部分の修正）</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h3 style="margin-top:24px;">📋 インフラチームへの依頼時に伝えること</h3>
+    <div class="plain-box">
+      <strong>アプリの特性（必ず伝える）：</strong><br>
+      ・ブラウザからマイク（getUserMedia API）を使うため、<strong>HTTPS必須</strong><br>
+      ・バックエンドとの通信に <strong>WebSocket（wss://）</strong> を使用<br>
+      ・フロントエンド（Next.js）とバックエンド（FastAPI）の2プロセス構成<br>
+      ・バックエンドは <code>localhost:8000</code>、フロントエンドは <code>localhost:3000</code> で動作<br><br>
+      <strong>依頼内容の例：</strong><br>
+      「EC2インスタンスにWebアプリをデプロイします。ブラウザからHTTPS（443番ポート）でアクセスできるようにしたいです。WebSocket通信（wss://）も使用します。SSL証明書の発行とドメイン登録をお願いしたいです。」
+    </div>
+
+    <div class="warning" style="margin-top:16px;">
+      ⚠️ ドメインが変わった場合は <code>frontend/.env.local</code> の <code>NEXT_PUBLIC_API_URL</code> と <code>NEXT_PUBLIC_WS_URL</code> を新しいドメインに更新し、フロントエンドを <strong>必ずリビルド</strong>（<code>npm run build</code>）してください。<br>
+      これらの値はビルド時に埋め込まれるため、再起動だけでは反映されません。
+    </div>
+  </section>
+
+</div>
+
+<footer>
+  <p>Demo App Phase 2 開発まとめ ／ 更新日：2026-05-12 ／ github.com/YU-creator-web/amc_app</p>
+</footer>
+
+</body>
+</html>

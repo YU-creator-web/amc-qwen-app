@@ -1,0 +1,47 @@
+# 環境変数（絶対にコミットしない）
+.env
+.env.local
+.env.*.local
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+venv/
+.venv/
+backend/uploads/
+
+# Node.js
+node_modules/
+frontend/.next/
+frontend/out/
+
+# Database
+*.db
+*.sqlite
+
+# Claude Code local settings
+.claude/
+
+# AI設定・開発ツール設定（内部ツール情報）
+CLAUDE.md
+frontend/CLAUDE.md
+frontend/AGENTS.md
+
+# 業務仕様書・開発メモ（機密情報を含む可能性があるため）
+spec.md
+spec_memo.md
+
+# 開発・テスト用スクリプト（本番運用には不要）
+backend/test_ws.py
+docs/test-materials/generate_manual_pdf.py
+docs/test-materials/generate_fraud_manual_pdf.py
+
+# Logs
+*.log
+backend-dev.log
+frontend-dev.log
+
+# OS
+.DS_Store
+Thumbs.db
