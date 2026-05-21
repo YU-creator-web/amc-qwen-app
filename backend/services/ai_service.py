@@ -1,10 +1,49 @@
+import io
+import wave
+import base64
 import json
 import logging
-from openai import AzureOpenAI
+from openai import OpenAI
 from database import settings, TacitKnowledge, Manual, DialogueLog
 from sqlalchemy.orm import Session
 
 logger = logging.getLogger(__name__)
+
+_whisper_model = None
+
+
+def get_whisper_model():
+    global _whisper_model
+    if _whisper_model is None:
+        from faster_whisper import WhisperModel
+        logger.info(f"Loading Whisper model: {settings.WHISPER_MODEL} on {settings.WHISPER_DEVICE}")
+        _whisper_model = WhisperModel(
+            settings.WHISPER_MODEL,
+            device=settings.WHISPER_DEVICE,
+            compute_type="int8",
+        )
+        logger.info("Whisper model loaded.")
+    return _whisper_model
+
+
+def get_ollama_client() -> OpenAI:
+    return OpenAI(base_url=settings.OLLAMA_BASE_URL, api_key="ollama")
+
+
+def transcribe_audio(pcm16_base64: str, sample_rate: int = 24000) -> str:
+    raw = base64.b64decode(pcm16_base64)
+
+    wav_buffer = io.BytesIO()
+    with wave.open(wav_buffer, "wb") as wf:
+        wf.setnchannels(1)
+        wf.setsampwidth(2)
+        wf.setframerate(sample_rate)
+        wf.writeframes(raw)
+    wav_buffer.seek(0)
+
+    model = get_whisper_model()
+    segments, _ = model.transcribe(wav_buffer, language="ja", beam_size=5)
+    return "".join(seg.text for seg in segments).strip()
 
 
 def build_extraction_system_prompt(manuals: list[Manual], deep_dive_level: int = 4) -> str:
@@ -76,44 +115,9 @@ def build_lecture_system_prompt(tacit_knowledge_list: list[TacitKnowledge]) -> s
 - 例：「では、まず〇〇についてお聞きします。△△の場面ではどう対応しますか？」のように始める"""
 
 
-def correct_stt_transcript(raw_text: str, bot_context: str) -> str:
-    client = AzureOpenAI(
-        azure_endpoint=settings.AZURE_OPENAI_ENDPOINT,
-        api_key=settings.CHAT_KEY,
-        api_version=settings.AZURE_OPENAI_API_VERSION,
-    )
-    prompt = f"""金融業務（口座開設）の音声認識（STT）テキストを修正してください。
-
-直前のボットの質問・発言:
-{bot_context or "（なし）"}
-
-STT認識テキスト:
-{raw_text}
-
-ルール:
-- 口座開設・本人確認・書類審査などの金融業務の文脈で、誤変換されていると思われる用語を正しい用語に修正する
-- 意味が自然に通じていれば変更しない
-- 修正後のテキストのみ返す（説明・コメント不要）"""
-
-    try:
-        response = client.chat.completions.create(
-            model=settings.AZURE_OPENAI_EXTRACT_DEPLOYMENT,
-            messages=[{"role": "user", "content": prompt}],
-            temperature=0,
-            max_tokens=500,
-        )
-        return (response.choices[0].message.content or raw_text).strip()
-    except Exception:
-        return raw_text
-
-
 def structure_tacit_knowledge(dialogue_logs: list[DialogueLog]) -> list[dict]:
-    logger.info(f"structure_tacit_knowledge: {len(dialogue_logs)} logs, deployment={settings.AZURE_OPENAI_EXTRACT_DEPLOYMENT}")
-    client = AzureOpenAI(
-        azure_endpoint=settings.AZURE_OPENAI_ENDPOINT,
-        api_key=settings.CHAT_KEY,
-        api_version=settings.AZURE_OPENAI_API_VERSION,
-    )
+    logger.info(f"structure_tacit_knowledge: {len(dialogue_logs)} logs, model={settings.OLLAMA_CHAT_MODEL}")
+    client = get_ollama_client()
 
     conversation = "\n".join(
         [f"{'ボット' if log.speaker == 'bot' else '熟練者'}: {log.text}" for log in dialogue_logs]
@@ -130,30 +134,28 @@ def structure_tacit_knowledge(dialogue_logs: list[DialogueLog]) -> list[dict]:
 {{
   "items": [
     {{
-      "business_flow_name": "業務フロー名（具体的な場面名。例：急ぎ来店時の手続き対応、複数人来店時の初期確認など）",
-      "judgment_criteria": "判断基準の内容。熟練者の発言の意図を正確に汲み取り、「どう判断するか」「どう対応するか」を具体的かつ詳細に記述する。複数の行動・条件がある場合は箇条書きで列挙する",
-      "applicable_conditions": "この判断が発動する具体的な状況・条件。熟練者が挙げた具体例を含めて記述する",
-      "notes": "例外的な対応・背景にある理由・注意点。熟練者の考え方・方針（例：理由が納得できても手続きを簡略化しない）まで含める"
+      "business_flow_name": "業務フロー名（具体的な場面名）",
+      "judgment_criteria": "判断基準の内容（具体的かつ詳細に）",
+      "applicable_conditions": "この判断が発動する具体的な状況・条件",
+      "notes": "例外的な対応・背景にある理由・注意点"
     }}
   ]
 }}
 
 ## 抽出ルール（厳守）
 - 熟練者が対話の中で**実際に発言した内容のみ**を抽出する（推測・一般論の追加禁止）
-- STT誤変換（例：「解説」→「開設」「年機種」→「免許証」）はボットの文脈から補正して解釈する
-- 表面的な要約ではなく、熟練者の発言の**ニュアンス・背景・理由・例外**まで詳細に記述する
-- 「〇〇の場合でも△△はしない」のような複合的・例外的な判断はそのまま詳細に記述する
+- STT誤変換はボットの文脈から補正して解釈する
 - 対話から読み取れる暗黙知が存在しない場合は items を空配列にする"""
 
-    logger.info("Calling Azure OpenAI for tacit knowledge extraction...")
+    logger.info("Calling Ollama for tacit knowledge extraction...")
     response = client.chat.completions.create(
-        model=settings.AZURE_OPENAI_EXTRACT_DEPLOYMENT,
+        model=settings.OLLAMA_CHAT_MODEL,
         messages=[{"role": "user", "content": prompt}],
         temperature=0.3,
     )
-    logger.info("Azure OpenAI extraction completed.")
+    logger.info("Ollama extraction completed.")
     raw = (response.choices[0].message.content or "").strip()
-    # コードブロックで囲まれていた場合は除去
+
     if raw.startswith("```"):
         raw = raw.split("```")[1]
         if raw.startswith("json"):

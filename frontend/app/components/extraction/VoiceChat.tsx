@@ -19,19 +19,18 @@ const WS_BASE = process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:8000";
 export default function VoiceChat({ sessionId, onDialogueUpdate, onComplete }: VoiceChatProps) {
   const [isConnected, setIsConnected] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
-  const [realtimeText, setRealtimeText] = useState("");
-  const [dialogue, setDialogue] = useState<DialogueLine[]>([]);
-  const [botAudioText, setBotAudioText] = useState("");
+  const [isTranscribing, setIsTranscribing] = useState(false);
   const [isBotSpeaking, setIsBotSpeaking] = useState(false);
-  const [vadMode, setVadMode] = useState<"auto" | "push">("push");
+  const [botStreamText, setBotStreamText] = useState("");
+  const [userTranscript, setUserTranscript] = useState("");
+  const [dialogue, setDialogue] = useState<DialogueLine[]>([]);
 
   const wsRef = useRef<WebSocket | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
-  const nextAudioTimeRef = useRef<number>(0);
   const processorRef = useRef<ScriptProcessorNode | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const pcmChunksRef = useRef<Int16Array[]>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const activeSourcesRef = useRef<AudioBufferSourceNode[]>([]);
 
   const addLine = useCallback((speaker: "bot" | "user", text: string) => {
     const line: DialogueLine = { speaker, text, timestamp: new Date() };
@@ -42,16 +41,28 @@ export default function VoiceChat({ sessionId, onDialogueUpdate, onComplete }: V
     });
   }, [onDialogueUpdate]);
 
-  const connect = useCallback(async () => {
+  const speakText = useCallback((text: string) => {
+    if (!window.speechSynthesis) return;
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = "ja-JP";
+    utterance.rate = 1.05;
+    utterance.onstart = () => setIsBotSpeaking(true);
+    utterance.onend = () => setIsBotSpeaking(false);
+    utterance.onerror = () => setIsBotSpeaking(false);
+    window.speechSynthesis.speak(utterance);
+  }, []);
+
+  const stopBotSpeech = useCallback(() => {
+    window.speechSynthesis?.cancel();
+    setIsBotSpeaking(false);
+  }, []);
+
+  const connect = useCallback(() => {
     const ws = new WebSocket(`${WS_BASE}/ws/voice/${sessionId}`);
     wsRef.current = ws;
 
-    ws.onopen = () => {
-      setIsConnected(true);
-      if (!audioContextRef.current) {
-        audioContextRef.current = new AudioContext({ sampleRate: 24000 });
-      }
-    };
+    ws.onopen = () => setIsConnected(true);
     ws.onclose = () => {
       setIsConnected(false);
       setIsRecording(false);
@@ -61,61 +72,41 @@ export default function VoiceChat({ sessionId, onDialogueUpdate, onComplete }: V
       const msg = JSON.parse(ev.data);
       const type: string = msg.type || "";
 
-      if (type === "user_transcript_saved") {
-        addLine("user", "");
-        setRealtimeText("");
+      if (type === "bot_delta") {
+        setBotStreamText((t) => t + (msg.text || ""));
       }
-      if (type === "response.audio_transcript.delta") {
-        setBotAudioText((t) => t + (msg.delta || ""));
-      }
-      if (type === "response.audio_transcript.done") {
-        const text = (msg.transcript || "").trim();
+      if (type === "bot_done") {
+        const text = (msg.text || "").trim();
         if (text) {
           addLine("bot", text);
-          setBotAudioText("");
+          setBotStreamText("");
+          speakText(text);
         }
       }
-      if (type === "response.created") {
-        nextAudioTimeRef.current = 0;
-        activeSourcesRef.current = [];
+      if (type === "transcribing") {
+        setIsTranscribing(true);
+        setUserTranscript("");
       }
-      if (type === "response.audio.delta" && msg.delta) {
-        setIsBotSpeaking(true);
-        playAudio(msg.delta);
+      if (type === "transcript") {
+        setIsTranscribing(false);
+        const text = (msg.text || "").trim();
+        if (text) {
+          setUserTranscript(text);
+          addLine("user", text);
+        } else if (msg.error) {
+          setUserTranscript(msg.error);
+        }
       }
-    };
-  }, [sessionId, addLine]);
-
-  const playAudio = (base64: string) => {
-    const ctx = audioContextRef.current ?? new AudioContext({ sampleRate: 24000 });
-    audioContextRef.current = ctx;
-    if (ctx.state === "suspended") ctx.resume();
-    const raw = atob(base64);
-    const buf = new Int16Array(raw.length / 2);
-    for (let i = 0; i < buf.length; i++) {
-      buf[i] = (raw.charCodeAt(i * 2) | (raw.charCodeAt(i * 2 + 1) << 8));
-    }
-    const float = new Float32Array(buf.length);
-    for (let i = 0; i < buf.length; i++) float[i] = buf[i] / 32768;
-    const ab = ctx.createBuffer(1, float.length, 24000);
-    ab.copyToChannel(float, 0);
-    const source = ctx.createBufferSource();
-    source.buffer = ab;
-    source.connect(ctx.destination);
-    const startTime = Math.max(ctx.currentTime, nextAudioTimeRef.current);
-    source.start(startTime);
-    nextAudioTimeRef.current = startTime + ab.duration;
-    activeSourcesRef.current.push(source);
-    source.onended = () => {
-      activeSourcesRef.current = activeSourcesRef.current.filter((s) => s !== source);
-      if (activeSourcesRef.current.length === 0) {
-        setIsBotSpeaking(false);
+      if (type === "error") {
+        setIsTranscribing(false);
       }
     };
-  };
+  }, [sessionId, addLine, speakText]);
 
   const startRecording = async () => {
     if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return;
+    stopBotSpeech();
+
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
     streamRef.current = stream;
     const ctx = new AudioContext({ sampleRate: 24000 });
@@ -123,70 +114,64 @@ export default function VoiceChat({ sessionId, onDialogueUpdate, onComplete }: V
     const source = ctx.createMediaStreamSource(stream);
     const processor = ctx.createScriptProcessor(4096, 1, 1);
     processorRef.current = processor;
+    pcmChunksRef.current = [];
 
     processor.onaudioprocess = (e) => {
-      if (wsRef.current?.readyState !== WebSocket.OPEN) return;
       const float = e.inputBuffer.getChannelData(0);
       const int16 = new Int16Array(float.length);
       for (let i = 0; i < float.length; i++) {
         int16[i] = Math.max(-32768, Math.min(32767, float[i] * 32768));
       }
-      const bytes = new Uint8Array(int16.buffer);
-      let bin = "";
-      for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
-      wsRef.current.send(JSON.stringify({
-        type: "input_audio_buffer.append",
-        audio: btoa(bin),
-      }));
+      pcmChunksRef.current.push(int16);
     };
 
     source.connect(processor);
     processor.connect(ctx.destination);
     setIsRecording(true);
+    setUserTranscript("");
   };
 
   const stopRecording = () => {
     processorRef.current?.disconnect();
     streamRef.current?.getTracks().forEach((t) => t.stop());
-    if (vadMode === "push" && wsRef.current?.readyState === WebSocket.OPEN) {
-      wsRef.current.send(JSON.stringify({ type: "input_audio_buffer.commit" }));
-      wsRef.current.send(JSON.stringify({ type: "response.create" }));
-    }
     setIsRecording(false);
-  };
 
-  const switchVadMode = (mode: "auto" | "push") => {
-    setVadMode(mode);
-    if (wsRef.current?.readyState !== WebSocket.OPEN) return;
-    const turnDetection = mode === "auto"
-      ? { type: "server_vad", threshold: 0.6, prefix_padding_ms: 300, silence_duration_ms: 2500 }
-      : null;
+    const chunks = pcmChunksRef.current;
+    if (chunks.length === 0 || !wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return;
+
+    const totalLength = chunks.reduce((sum, c) => sum + c.length, 0);
+    const merged = new Int16Array(totalLength);
+    let offset = 0;
+    for (const chunk of chunks) {
+      merged.set(chunk, offset);
+      offset += chunk.length;
+    }
+
+    const bytes = new Uint8Array(merged.buffer);
+    let bin = "";
+    for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+    const base64 = btoa(bin);
+
     wsRef.current.send(JSON.stringify({
-      type: "session.update",
-      session: { turn_detection: turnDetection },
+      type: "audio_data",
+      audio: base64,
+      sample_rate: 24000,
     }));
   };
 
-  const stopBotSpeech = () => {
-    activeSourcesRef.current.forEach((s) => { try { s.stop(); } catch {} });
-    activeSourcesRef.current = [];
-    nextAudioTimeRef.current = 0;
-    setBotAudioText("");
-    setIsBotSpeaking(false);
-    if (wsRef.current?.readyState === WebSocket.OPEN) {
-      wsRef.current.send(JSON.stringify({ type: "response.cancel" }));
-    }
-  };
-
   const handleComplete = () => {
-    stopRecording();
+    if (isRecording) stopRecording();
+    stopBotSpeech();
     wsRef.current?.close();
     onComplete();
   };
 
   useEffect(() => {
     connect();
-    return () => { wsRef.current?.close(); };
+    return () => {
+      wsRef.current?.close();
+      window.speechSynthesis?.cancel();
+    };
   }, [connect]);
 
   useEffect(() => {
@@ -197,18 +182,18 @@ export default function VoiceChat({ sessionId, onDialogueUpdate, onComplete }: V
         e.preventDefault();
         if (isRecording) {
           stopRecording();
-        } else if (isConnected && !isBotSpeaking) {
+        } else if (isConnected && !isBotSpeaking && !isTranscribing) {
           startRecording();
         }
       }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isRecording, isConnected, isBotSpeaking]);
+  }, [isRecording, isConnected, isBotSpeaking, isTranscribing]);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
-  }, [dialogue, realtimeText, botAudioText, isRecording]);
+  }, [dialogue, botStreamText, userTranscript, isRecording]);
 
   return (
     <div className="flex flex-col h-full">
@@ -229,63 +214,49 @@ export default function VoiceChat({ sessionId, onDialogueUpdate, onComplete }: V
                 {line.text}
               </div>
             ) : (
-              <div className="text-xs px-3 py-1.5 rounded-full" style={{ backgroundColor: "var(--sky-pale)", color: "var(--sky)" }}>
-                ✓ 回答送信済
+              <div
+                className="max-w-[75%] px-4 py-2 rounded-2xl text-sm leading-relaxed text-right"
+                style={{ backgroundColor: "#e0f2fe", color: "#0369a1", borderBottomRightRadius: 4 }}
+              >
+                <div className="text-xs mb-1 opacity-60">🎤 あなた</div>
+                {line.text}
               </div>
             )}
           </div>
         ))}
 
-        {/* 録音中インジケーター */}
-        {isRecording && (
-          <div className="flex justify-end">
-            <div className="text-xs px-3 py-1.5 rounded-full animate-pulse" style={{ backgroundColor: "#fee2e2", color: "#ef4444" }}>
-              🎤 解析中...
-            </div>
-          </div>
-        )}
-
-        {/* ボット応答中 */}
-        {botAudioText && (
+        {/* ボット応答ストリーミング中 */}
+        {botStreamText && (
           <div className="flex justify-start">
             <div className="max-w-[75%] px-4 py-2 rounded-2xl text-sm border-2 border-dashed"
               style={{ borderColor: "var(--sky-light)", color: "var(--navy-light)", borderBottomLeftRadius: 4 }}>
               <div className="text-xs mb-1 opacity-60">🤖 回答中...</div>
-              {botAudioText}
+              {botStreamText}
             </div>
           </div>
         )}
 
+        {/* 音声認識中 */}
+        {isTranscribing && (
+          <div className="flex justify-end">
+            <div className="text-xs px-3 py-1.5 rounded-full animate-pulse" style={{ backgroundColor: "#fef9c3", color: "#92400e" }}>
+              ✍️ 認識中...
+            </div>
+          </div>
+        )}
+
+        {/* 録音中インジケーター */}
+        {isRecording && (
+          <div className="flex justify-end">
+            <div className="text-xs px-3 py-1.5 rounded-full animate-pulse" style={{ backgroundColor: "#fee2e2", color: "#ef4444" }}>
+              🎤 録音中...
+            </div>
+          </div>
+        )}
       </div>
 
       {/* コントロールバー */}
       <div className="p-4 border-t flex flex-col gap-3" style={{ borderColor: "var(--gray-200)" }}>
-        {/* VAD モードトグル */}
-        <div className="flex items-center justify-center gap-1 text-xs">
-          <button
-            onClick={() => switchVadMode("auto")}
-            className="px-3 py-1 rounded-full transition-all"
-            style={
-              vadMode === "auto"
-                ? { backgroundColor: "var(--navy)", color: "white" }
-                : { backgroundColor: "var(--sky-pale)", color: "var(--navy)" }
-            }
-          >
-            自動検出
-          </button>
-          <button
-            onClick={() => switchVadMode("push")}
-            className="px-3 py-1 rounded-full transition-all"
-            style={
-              vadMode === "push"
-                ? { backgroundColor: "var(--navy)", color: "white" }
-                : { backgroundColor: "var(--sky-pale)", color: "var(--navy)" }
-            }
-          >
-            手動（OFF で送信）
-          </button>
-        </div>
-
         <div className="flex items-center justify-center gap-4">
           <div className="flex items-center gap-2 text-xs" style={{ color: "var(--gray-500)" }}>
             <span
@@ -298,7 +269,7 @@ export default function VoiceChat({ sessionId, onDialogueUpdate, onComplete }: V
           {!isRecording ? (
             <button
               onClick={startRecording}
-              disabled={!isConnected || isBotSpeaking}
+              disabled={!isConnected || isBotSpeaking || isTranscribing}
               className="flex items-center gap-2 px-6 py-2.5 rounded-full text-sm font-medium transition-all disabled:opacity-40"
               style={{ backgroundColor: "var(--sky)", color: "white" }}
             >
@@ -312,14 +283,13 @@ export default function VoiceChat({ sessionId, onDialogueUpdate, onComplete }: V
               style={{ backgroundColor: "#ef4444", color: "white" }}
             >
               <MicOff size={16} />
-              {vadMode === "push" ? "OFF して送信" : "マイク OFF"}
+              OFF して送信
             </button>
           )}
 
           {isBotSpeaking && (
             <button
               onClick={stopBotSpeech}
-              title="ボットの発話を止める（接続は維持）"
               className="flex items-center gap-2 px-4 py-2.5 rounded-full text-sm font-medium border-2 transition-all"
               style={{ borderColor: "#f59e0b", color: "#f59e0b", backgroundColor: "#fffbeb" }}
             >
@@ -338,12 +308,9 @@ export default function VoiceChat({ sessionId, onDialogueUpdate, onComplete }: V
           </button>
         </div>
 
-        {vadMode === "push" && (
-          <p className="text-center text-xs leading-relaxed" style={{ color: "var(--gray-500)" }}>
-            準備ができましたらマイクをOnにして回答を開始してください。<br />
-            回答が終わったら「OFF して送信」を押してください（ショートカットキー：Space）
-          </p>
-        )}
+        <p className="text-center text-xs leading-relaxed" style={{ color: "var(--gray-500)" }}>
+          マイクをOnにして回答を開始してください。回答が終わったら「OFF して送信」を押してください（ショートカットキー：Space）
+        </p>
       </div>
     </div>
   );

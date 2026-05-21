@@ -1,22 +1,19 @@
 import asyncio
 import json
 import logging
-import websockets
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends
 from sqlalchemy.orm import Session as DBSession
 from database import get_db, Session, DialogueLog, Manual, TacitKnowledge, Speaker, settings
-from services.ai_service import build_extraction_system_prompt, build_lecture_system_prompt, structure_tacit_knowledge
+from services.ai_service import (
+    build_extraction_system_prompt,
+    build_lecture_system_prompt,
+    structure_tacit_knowledge,
+    transcribe_audio,
+    get_ollama_client,
+)
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["voice"])
-
-def get_azure_ws_url() -> str:
-    base = settings.AZURE_OPENAI_ENDPOINT.replace("https://", "").rstrip("/")
-    return (
-        f"wss://{base}/openai/realtime"
-        f"?api-version={settings.AZURE_OPENAI_API_VERSION}"
-        f"&deployment={settings.AZURE_OPENAI_REALTIME_DEPLOYMENT}"
-    )
 
 
 async def get_system_prompt_for_session(session_id: int, db: DBSession) -> str:
@@ -34,6 +31,35 @@ async def get_system_prompt_for_session(session_id: int, db: DBSession) -> str:
         return build_lecture_system_prompt(tacit_list)
 
 
+async def stream_ollama_response(messages: list, websocket: WebSocket) -> str:
+    client = get_ollama_client()
+    full_text = ""
+    try:
+        stream = await asyncio.to_thread(
+            lambda: client.chat.completions.create(
+                model=settings.OLLAMA_CHAT_MODEL,
+                messages=messages,
+                stream=True,
+                temperature=0.7,
+            )
+        )
+        for chunk in stream:
+            delta = chunk.choices[0].delta.content or ""
+            if delta:
+                full_text += delta
+                await websocket.send_text(json.dumps({
+                    "type": "bot_delta",
+                    "text": delta,
+                }))
+    except Exception as e:
+        logger.error(f"Ollama streaming error: {e}")
+    await websocket.send_text(json.dumps({
+        "type": "bot_done",
+        "text": full_text,
+    }))
+    return full_text
+
+
 @router.websocket("/ws/voice/{session_id}")
 async def voice_websocket(websocket: WebSocket, session_id: int, db: DBSession = Depends(get_db)):
     await websocket.accept()
@@ -44,80 +70,51 @@ async def voice_websocket(websocket: WebSocket, session_id: int, db: DBSession =
         return
 
     system_prompt = await get_system_prompt_for_session(session_id, db)
+    messages = [{"role": "system", "content": system_prompt}]
 
-    azure_url = get_azure_ws_url()
-    logger.info(f"Azure WS URL: {azure_url}")
     try:
-        extra_headers = {"api-key": settings.REALTIME_KEY}
-        async with websockets.connect(azure_url, additional_headers=extra_headers) as azure_ws:
-            # セッション初期化
-            await azure_ws.send(json.dumps({
-                "type": "session.update",
-                "session": {
-                    "modalities": ["text", "audio"],
-                    "instructions": system_prompt,
-                    "voice": "alloy",
-                    "input_audio_format": "pcm16",
-                    "output_audio_format": "pcm16",
-                    "input_audio_transcription": {
-                        "model": "gpt-4o-mini-transcribe",
-                        "language": "ja",
-                        "prompt": "口座開設、本人確認、免許証、健康保険証、住民票、マイナンバー、申込書、代理人、訂正印、有効期限、反社チェック",
-                    },
-                    "turn_detection": None,
-                    "temperature": 0.7,
-                }
-            }))
+        # 最初のボットの質問を生成して送信
+        first_text = await stream_ollama_response(messages, websocket)
+        if first_text:
+            messages.append({"role": "assistant", "content": first_text})
+            db.add(DialogueLog(session_id=session_id, speaker=Speaker.bot, text=first_text))
+            db.commit()
 
-            async def browser_to_azure():
-                try:
-                    while True:
-                        data = await websocket.receive_text()
-                        msg = json.loads(data)
-                        await azure_ws.send(json.dumps(msg))
-                except (WebSocketDisconnect, Exception):
-                    pass
+        # メインループ：ユーザーの音声を受け取って応答
+        while True:
+            data = await websocket.receive_text()
+            msg = json.loads(data)
 
-            async def azure_to_browser():
-                session_initialized = False
-                last_bot_text = ""
-                try:
-                    async for raw in azure_ws:
-                        msg = json.loads(raw)
-                        msg_type = msg.get("type", "")
+            if msg.get("type") == "audio_data":
+                pcm16_base64 = msg.get("audio", "")
+                sample_rate = msg.get("sample_rate", 24000)
 
-                        await websocket.send_text(json.dumps(msg))
+                # STT
+                await websocket.send_text(json.dumps({"type": "transcribing"}))
+                transcript = await asyncio.to_thread(transcribe_audio, pcm16_base64, sample_rate)
 
-                        # セッション確立後、2秒待ってからボットの最初の質問を開始
-                        if not session_initialized and msg_type == "session.updated":
-                            session_initialized = True
-                            await asyncio.sleep(1)
-                            await azure_ws.send(json.dumps({"type": "response.create"}))
+                if not transcript:
+                    await websocket.send_text(json.dumps({
+                        "type": "transcript",
+                        "text": "",
+                        "error": "音声を認識できませんでした。もう一度話しかけてください。",
+                    }))
+                    continue
 
-                        # ボット発話確定 → DB保存 & 文脈として保持
-                        if msg_type == "response.audio_transcript.done":
-                            text = msg.get("transcript", "").strip()
-                            if text:
-                                last_bot_text = text
-                                log = DialogueLog(session_id=session_id, speaker=Speaker.bot, text=text)
-                                db.add(log)
-                                db.commit()
+                await websocket.send_text(json.dumps({
+                    "type": "transcript",
+                    "text": transcript,
+                }))
+                db.add(DialogueLog(session_id=session_id, speaker=Speaker.user, text=transcript))
+                db.commit()
 
-                        # ユーザー発話確定 → 生STTをDB保存 & 「送信済」通知のみ送信
-                        elif msg_type == "conversation.item.input_audio_transcription.completed":
-                            raw_text = msg.get("transcript", "").strip()
-                            if raw_text:
-                                log = DialogueLog(session_id=session_id, speaker=Speaker.user, text=raw_text)
-                                db.add(log)
-                                db.commit()
-                                await websocket.send_text(json.dumps({
-                                    "type": "user_transcript_saved",
-                                }))
-
-                except Exception:
-                    pass
-
-            await asyncio.gather(browser_to_azure(), azure_to_browser())
+                # LLM応答
+                messages.append({"role": "user", "content": transcript})
+                bot_text = await stream_ollama_response(messages, websocket)
+                if bot_text:
+                    messages.append({"role": "assistant", "content": bot_text})
+                    db.add(DialogueLog(session_id=session_id, speaker=Speaker.bot, text=bot_text))
+                    db.commit()
 
     except WebSocketDisconnect:
         pass

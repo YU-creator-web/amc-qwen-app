@@ -7,12 +7,10 @@ import enum
 
 
 class Settings(BaseSettings):
-    AZURE_OPENAI_ENDPOINT: str = ""
-    AZURE_OPENAI_API_VERSION: str = "2024-10-01-preview"
-    AZURE_OPENAI_REALTIME_DEPLOYMENT: str = "gpt-realtime-1.5"
-    AZURE_OPENAI_EXTRACT_DEPLOYMENT: str = "gpt-5.4"
-    REALTIME_KEY: str = ""
-    CHAT_KEY: str = ""
+    OLLAMA_BASE_URL: str = "http://localhost:11434/v1"
+    OLLAMA_CHAT_MODEL: str = "qwen2.5:3b"
+    WHISPER_MODEL: str = "tiny"
+    WHISPER_DEVICE: str = "cpu"
     DB_PATH: str = "anmokuchi.db"
     UPLOAD_DIR: str = "uploads"
 
