@@ -20,6 +20,7 @@ export default function VoiceChat({ sessionId, onDialogueUpdate, onComplete }: V
   const [isConnected, setIsConnected] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [isTranscribing, setIsTranscribing] = useState(false);
+  const [isBotThinking, setIsBotThinking] = useState(false);
   const [isBotSpeaking, setIsBotSpeaking] = useState(false);
   const [botStreamText, setBotStreamText] = useState("");
   const [userTranscript, setUserTranscript] = useState("");
@@ -72,10 +73,16 @@ export default function VoiceChat({ sessionId, onDialogueUpdate, onComplete }: V
       const msg = JSON.parse(ev.data);
       const type: string = msg.type || "";
 
+      if (type === "bot_thinking") {
+        setIsBotThinking(true);
+        setBotStreamText("");
+      }
       if (type === "bot_delta") {
+        setIsBotThinking(false);
         setBotStreamText((t) => t + (msg.text || ""));
       }
       if (type === "bot_done") {
+        setIsBotThinking(false);
         const text = (msg.text || "").trim();
         if (text) {
           addLine("bot", text);
@@ -182,7 +189,7 @@ export default function VoiceChat({ sessionId, onDialogueUpdate, onComplete }: V
         e.preventDefault();
         if (isRecording) {
           stopRecording();
-        } else if (isConnected && !isBotSpeaking && !isTranscribing) {
+        } else if (isConnected && !isBotSpeaking && !isTranscribing && !isBotThinking) {
           startRecording();
         }
       }
@@ -224,6 +231,16 @@ export default function VoiceChat({ sessionId, onDialogueUpdate, onComplete }: V
             )}
           </div>
         ))}
+
+        {/* ボット思考中 */}
+        {isBotThinking && (
+          <div className="flex justify-start">
+            <div className="px-4 py-2 rounded-2xl text-sm border-2 border-dashed animate-pulse"
+              style={{ borderColor: "var(--sky-light)", color: "var(--navy-light)", borderBottomLeftRadius: 4 }}>
+              <div className="text-xs opacity-60">🤖 考え中...</div>
+            </div>
+          </div>
+        )}
 
         {/* ボット応答ストリーミング中 */}
         {botStreamText && (
@@ -269,7 +286,7 @@ export default function VoiceChat({ sessionId, onDialogueUpdate, onComplete }: V
           {!isRecording ? (
             <button
               onClick={startRecording}
-              disabled={!isConnected || isBotSpeaking || isTranscribing}
+              disabled={!isConnected || isBotSpeaking || isTranscribing || isBotThinking}
               className="flex items-center gap-2 px-6 py-2.5 rounded-full text-sm font-medium transition-all disabled:opacity-40"
               style={{ backgroundColor: "var(--sky)", color: "white" }}
             >

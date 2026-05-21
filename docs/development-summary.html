@@ -310,6 +310,7 @@
     <li><a href="#s14">🚀 EC2 デプロイ手順（実施手順詳細）</a></li>
     <li><a href="#s15">💬 Teams Bot vs 独自UI 音声対話比較</a></li>
     <li><a href="#s16">🏢 会社AWS環境へのデプロイ時の注意点</a></li>
+    <li><a href="#s17">🚀 本番GPU環境での動作準備（Qwen版）</a></li>
   </ol>
 </div>
 
@@ -1598,10 +1599,183 @@ sudo systemctl restart demo-frontend</code></pre>
     </div>
   </section>
 
+  <!-- ===== 17. 本番GPU環境での動作準備（Qwen版） ===== -->
+  <section id="s17">
+    <h2>🚀 17. 本番GPU環境での動作準備（Qwen版）</h2>
+
+    <div class="plain-box">
+      このアプリ（Qwen版）はローカルPCで軽量モデル（Whisper tiny + Qwen2.5:3b）を使って動作確認済みです。<br>
+      本番GPU環境では大型モデルに切り替えることで、音声認識精度・応答品質が大幅に向上します。<strong>.envの2行を変えるだけ</strong>で切り替えられます。
+    </div>
+
+    <h3>📋 前提条件</h3>
+    <table>
+      <thead><tr><th>項目</th><th>要件</th><th>備考</th></tr></thead>
+      <tbody>
+        <tr><td>GPU VRAM</td><td>24GB 以上</td><td>Qwen2.5:32b は約20GB必要</td></tr>
+        <tr><td>CUDA</td><td>12.x 以上</td><td><code>nvidia-smi</code> で確認</td></tr>
+        <tr><td>OS</td><td>Ubuntu 22.04 推奨</td><td>Windows GPU環境でも可</td></tr>
+        <tr><td>Python</td><td>3.11 以上</td><td><code>python3 --version</code> で確認</td></tr>
+        <tr><td>Node.js</td><td>20 以上</td><td><code>node --version</code> で確認</td></tr>
+        <tr><td>Git</td><td>任意バージョン</td><td></td></tr>
+      </tbody>
+    </table>
+
+    <h3 style="margin-top:24px;">🔧 セットアップ手順</h3>
+
+    <div class="step-box">
+      <div class="step-title"><span class="step-num">1</span> Ollama のインストール</div>
+      <pre><code># Linux / Mac
+curl -fsSL https://ollama.com/install.sh | sh
+
+# Windows
+# https://ollama.com からインストーラーをダウンロード</code></pre>
+    </div>
+
+    <div class="step-box">
+      <div class="step-title"><span class="step-num">2</span> Qwen2.5:32b モデルのダウンロード（約20GB・時間がかかります）</div>
+      <pre><code>ollama pull qwen2.5:32b</code></pre>
+      <div class="info">💡 ダウンロード中も次の手順を進めておけます。サーバー起動時にモデルが読み込まれます。</div>
+    </div>
+
+    <div class="step-box">
+      <div class="step-title"><span class="step-num">3</span> リポジトリのクローンと Python 環境のセットアップ</div>
+      <pre><code>git clone https://github.com/YU-creator-web/amc-qwen-app.git
+cd amc-qwen-app/backend
+python3 -m venv venv
+source venv/bin/activate        # Windows: venv\Scripts\activate
+pip install -r requirements.txt</code></pre>
+    </div>
+
+    <div class="step-box">
+      <div class="step-title"><span class="step-num">4</span> .env ファイルの作成（ここが本番切り替えのポイント）</div>
+      <pre><code>cp .env.example .env</code></pre>
+      <p style="margin:8px 0 4px;">以下の内容で <code>.env</code> を編集する：</p>
+      <pre><code>OLLAMA_BASE_URL=http://localhost:11434/v1
+OLLAMA_CHAT_MODEL=qwen2.5:32b
+
+WHISPER_MODEL=large-v3
+WHISPER_DEVICE=cuda
+
+DB_PATH=anmokuchi.db
+UPLOAD_DIR=uploads</code></pre>
+      <div class="warning">⚠️ ローカル開発時と異なるのは <code>OLLAMA_CHAT_MODEL</code>・<code>WHISPER_MODEL</code>・<code>WHISPER_DEVICE</code> の3行のみ</div>
+    </div>
+
+    <div class="step-box">
+      <div class="step-title"><span class="step-num">5</span> フロントエンドのセットアップ</div>
+      <pre><code>cd ../frontend
+npm install</code></pre>
+      <p style="margin:8px 0 4px;"><code>.env.local</code> を作成：</p>
+      <pre><code>NEXT_PUBLIC_API_URL=http://localhost:8000
+NEXT_PUBLIC_WS_URL=ws://localhost:8000</code></pre>
+      <div class="info">💡 HTTPSや別ドメインの場合は <code>https://</code>・<code>wss://</code> に変更し <code>npm run build</code> でリビルドが必要</div>
+    </div>
+
+    <div class="step-box">
+      <div class="step-title"><span class="step-num">6</span> サーバー起動</div>
+      <pre><code># バックエンド（別ターミナルで）
+cd backend
+source venv/bin/activate
+uvicorn main:app --host 0.0.0.0 --port 8000
+
+# フロントエンド（別ターミナルで）
+cd frontend
+npm run dev    # 開発時
+# npm run build && npm start  # 本番時</code></pre>
+      <div class="success">✅ http://localhost:3000 でアクセス可能になります</div>
+    </div>
+
+    <h3 style="margin-top:24px;">📊 ローカル開発 vs 本番GPU 品質比較</h3>
+    <table>
+      <thead>
+        <tr><th>項目</th><th>ローカル開発（確認用）</th><th>本番GPU</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>Whisper モデル</strong></td>
+          <td>tiny（~150MB・低精度）</td>
+          <td>large-v3（~3GB・最高精度）</td>
+        </tr>
+        <tr>
+          <td><strong>Whisper デバイス</strong></td>
+          <td>cpu</td>
+          <td>cuda（GPU高速処理）</td>
+        </tr>
+        <tr>
+          <td><strong>LLM モデル</strong></td>
+          <td>qwen2.5:3b（~2GB・簡易応答）</td>
+          <td>qwen2.5:32b（~20GB・高精度）</td>
+        </tr>
+        <tr>
+          <td><strong>音声認識精度</strong></td>
+          <td>△ 業務用語の誤変換多い</td>
+          <td>◎ 高精度・日本語対応強い</td>
+        </tr>
+        <tr>
+          <td><strong>LLM 応答品質</strong></td>
+          <td>△ 指示追従が弱い・応答がやや不自然</td>
+          <td>◎ 指示追従精度高・自然な日本語</td>
+        </tr>
+        <tr>
+          <td><strong>STT 処理速度</strong></td>
+          <td>数秒〜10秒</td>
+          <td>1〜2秒（GPU）</td>
+        </tr>
+        <tr>
+          <td><strong>LLM 応答速度</strong></td>
+          <td>5〜15秒</td>
+          <td>2〜5秒（GPU）</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h3 style="margin-top:24px;">🔄 コード更新時の再デプロイ手順</h3>
+    <pre><code>cd amc-qwen-app
+git pull origin master
+
+# バックエンド再起動
+cd backend
+source venv/bin/activate
+pip install -r requirements.txt   # パッケージ追加があった場合のみ
+# uvicorn を再起動
+
+# フロントエンド（.env.local を変更した場合のみリビルド）
+cd ../frontend
+npm run build && npm start</code></pre>
+
+    <h3 style="margin-top:24px;">⚠️ よくあるトラブル</h3>
+    <table>
+      <thead><tr><th>症状</th><th>原因</th><th>対処</th></tr></thead>
+      <tbody>
+        <tr>
+          <td>Whisper が遅い・エラー</td>
+          <td>CUDA未認識 or compute_type不一致</td>
+          <td><code>WHISPER_DEVICE=cpu</code> に戻して確認。CUDAが使えるなら <code>nvidia-smi</code> で確認後に再設定</td>
+        </tr>
+        <tr>
+          <td>Ollamaエラー「model not found」</td>
+          <td>モデルのダウンロード未完了</td>
+          <td><code>ollama list</code> でモデル一覧確認。なければ <code>ollama pull qwen2.5:32b</code> を再実行</td>
+        </tr>
+        <tr>
+          <td>Out of Memory（OOM）エラー</td>
+          <td>VRAM不足</td>
+          <td>他のGPUプロセスを終了するか、<code>qwen2.5:14b</code> などサイズを落とす</td>
+        </tr>
+        <tr>
+          <td>ボットの最初の発話が遅い</td>
+          <td>Whisperモデルの初回ロード</td>
+          <td>2回目以降は速くなる。初回のみ30秒程度かかることがある</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
 </div>
 
 <footer>
-  <p>Demo App Phase 2 開発まとめ ／ 更新日：2026-05-12 ／ github.com/YU-creator-web/amc_app</p>
+  <p>Demo App（Qwen版）開発まとめ ／ 更新日：2026-05-21 ／ github.com/YU-creator-web/amc-qwen-app</p>
 </footer>
 
 </body>

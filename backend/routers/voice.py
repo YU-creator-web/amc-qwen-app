@@ -1,6 +1,7 @@
 import asyncio
 import json
 import logging
+import traceback
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends
 from sqlalchemy.orm import Session as DBSession
 from database import get_db, Session, DialogueLog, Manual, TacitKnowledge, Speaker, settings
@@ -31,28 +32,25 @@ async def get_system_prompt_for_session(session_id: int, db: DBSession) -> str:
         return build_lecture_system_prompt(tacit_list)
 
 
-async def stream_ollama_response(messages: list, websocket: WebSocket) -> str:
+async def call_ollama(messages: list, websocket: WebSocket) -> str:
     client = get_ollama_client()
-    full_text = ""
-    try:
-        stream = await asyncio.to_thread(
-            lambda: client.chat.completions.create(
-                model=settings.OLLAMA_CHAT_MODEL,
-                messages=messages,
-                stream=True,
-                temperature=0.7,
-            )
+
+    def _call():
+        response = client.chat.completions.create(
+            model=settings.OLLAMA_CHAT_MODEL,
+            messages=messages,
+            stream=False,
+            temperature=0.7,
         )
-        for chunk in stream:
-            delta = chunk.choices[0].delta.content or ""
-            if delta:
-                full_text += delta
-                await websocket.send_text(json.dumps({
-                    "type": "bot_delta",
-                    "text": delta,
-                }))
+        return response.choices[0].message.content or ""
+
+    await websocket.send_text(json.dumps({"type": "bot_thinking"}))
+    try:
+        full_text = await asyncio.to_thread(_call)
     except Exception as e:
-        logger.error(f"Ollama streaming error: {e}")
+        logger.error(f"Ollama error: {e}")
+        full_text = ""
+
     await websocket.send_text(json.dumps({
         "type": "bot_done",
         "text": full_text,
@@ -74,7 +72,7 @@ async def voice_websocket(websocket: WebSocket, session_id: int, db: DBSession =
 
     try:
         # 最初のボットの質問を生成して送信
-        first_text = await stream_ollama_response(messages, websocket)
+        first_text = await call_ollama(messages, websocket)
         if first_text:
             messages.append({"role": "assistant", "content": first_text})
             db.add(DialogueLog(session_id=session_id, speaker=Speaker.bot, text=first_text))
@@ -110,7 +108,7 @@ async def voice_websocket(websocket: WebSocket, session_id: int, db: DBSession =
 
                 # LLM応答
                 messages.append({"role": "user", "content": transcript})
-                bot_text = await stream_ollama_response(messages, websocket)
+                bot_text = await call_ollama(messages, websocket)
                 if bot_text:
                     messages.append({"role": "assistant", "content": bot_text})
                     db.add(DialogueLog(session_id=session_id, speaker=Speaker.bot, text=bot_text))
@@ -120,6 +118,7 @@ async def voice_websocket(websocket: WebSocket, session_id: int, db: DBSession =
         pass
     except Exception as e:
         logger.error(f"Voice WebSocket error: {type(e).__name__}: {e}")
+        logger.error(traceback.format_exc())
         try:
             await websocket.send_text(json.dumps({"type": "error", "message": str(e)}))
             await websocket.close()
